@@ -1,0 +1,22 @@
+<svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+
+  <!-- Vertical line (bottom shortened) -->
+  <path d="M10 3V13"
+        stroke="#FBF0C4"
+        stroke-width="1.66597"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+
+  <!-- S curve -->
+  <path d="M13 6C13 4.9 11.8 4 10 4
+           C8.2 4 7 4.9 7 6
+           C7 7.1 8.2 8 10 8
+           C11.8 8 13 8.9 13 10
+           C13 11.1 11.8 12 10 12
+           C8.2 12 7 11.1 7 10"
+        stroke="#FBF0C4"
+        stroke-width="1.66597"
+        stroke-linecap="round"
+        stroke-linejoin="round"/>
+
+</svg>
