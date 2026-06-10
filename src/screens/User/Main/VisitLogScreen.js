@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Modal, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import AppButton from '../../../components/AppButton';
 import AppIcon from '../../../components/AppIcon';
 import AppImageHeader from '../../../components/AppImageHeader';
@@ -34,6 +34,7 @@ const visits = [
 
 const VisitLogScreen = ({ navigation }) => {
   const [tab, setTab] = useState(0);
+  const [isLogModalOpen, setIsLogModalOpen] = useState(false);
 
   return (
     <ScreenWrapper
@@ -65,10 +66,17 @@ const VisitLogScreen = ({ navigation }) => {
         {tab === 0 ? <Timeline /> : <MapView />}
       </ScreenWrapper>
       {tab === 0 ? (
-        <TouchableOpacity activeOpacity={0.82} style={styles.fab}>
+        <TouchableOpacity
+          activeOpacity={0.82}
+          onPress={() => setIsLogModalOpen(true)}
+          style={styles.fab}>
           <AppIcon name="add" color={AppColors.white} size={30} />
         </TouchableOpacity>
       ) : null}
+      <LogVisitModal
+        visible={isLogModalOpen}
+        onClose={() => setIsLogModalOpen(false)}
+      />
     </ScreenWrapper>
   );
 };
@@ -166,6 +174,47 @@ const LocationRow = ({ label, value }) => (
   </View>
 );
 
+const LogVisitModal = ({ onClose, visible }) => (
+  <Modal
+    transparent
+    animationType="fade"
+    visible={visible}
+    onRequestClose={onClose}>
+    <View style={styles.modalBackdrop}>
+      <View style={styles.visitModal}>
+        <View style={styles.modalTop}>
+          <View style={styles.modalSpacer} />
+          <AppText style={styles.modalTitle}>Log a Visit</AppText>
+          <TouchableOpacity activeOpacity={0.75} onPress={onClose}>
+            <AppIcon name="close" color={AppColors.homeTextMuted} size={20} />
+          </TouchableOpacity>
+        </View>
+        <LineBreak height={2.4} />
+        <View style={styles.detectedBox}>
+          <AppIcon name="location-on" color={AppColors.homeTextMuted} size={24} />
+          <AppText style={styles.detectedText}>Location detected automatically</AppText>
+        </View>
+        <LineBreak height={1.6} />
+        <TextInput
+          multiline
+          placeholder="Add a note about your visit..."
+          placeholderTextColor={AppColors.homeTextMuted}
+          style={styles.visitNoteInput}
+        />
+        <LineBreak height={2.4} />
+        <View style={styles.modalButtons}>
+          <TouchableOpacity activeOpacity={0.82} onPress={onClose} style={styles.logButton}>
+            <AppText style={styles.logButtonText}>Log Visit</AppText>
+          </TouchableOpacity>
+          <TouchableOpacity activeOpacity={0.82} onPress={onClose} style={styles.cancelButton}>
+            <AppText style={styles.cancelButtonText}>Cancel</AppText>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  </Modal>
+);
+
 const styles = StyleSheet.create({
   screen: { backgroundColor: AppColors.homeBody },
   root: { flex: 1 },
@@ -208,6 +257,84 @@ const styles = StyleSheet.create({
   locationValue: { color: AppColors.white, fontSize: responsiveFontSize(1.3), fontWeight: '500' },
   directionsButton: { backgroundColor: AppColors.homeActionCard, borderRadius: 30 },
   directionsText: { color: AppColors.white },
+  modalBackdrop: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: responsiveWidth(5.8),
+    backgroundColor: 'rgba(0,0,0,0.55)',
+  },
+  visitModal: {
+    width: '100%',
+    padding: responsiveWidth(5.8),
+    borderRadius: 24,
+    backgroundColor: AppColors.memorialCard,
+  },
+  modalTop: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  modalSpacer: {
+    width: 20,
+  },
+  modalTitle: {
+    color: AppColors.white,
+    fontSize: responsiveFontSize(1.9),
+    fontWeight: '700',
+  },
+  detectedBox: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    padding: responsiveWidth(4),
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  detectedText: {
+    color: AppColors.white,
+    flex: 1,
+    fontSize: responsiveFontSize(1.28),
+    marginLeft: responsiveWidth(3),
+  },
+  visitNoteInput: {
+    height: responsiveHeight(12),
+    padding: responsiveWidth(4),
+    borderRadius: 16,
+    color: AppColors.white,
+    fontSize: responsiveFontSize(1.3),
+    textAlignVertical: 'top',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: responsiveWidth(4),
+  },
+  logButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+    height: responsiveHeight(5),
+    borderWidth: 0.5,
+    borderColor: AppColors.homeBorder,
+    borderRadius: 30,
+  },
+  logButtonText: {
+    color: AppColors.white,
+    fontSize: responsiveFontSize(1.3),
+  },
+  cancelButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    flex: 1,
+    height: responsiveHeight(5),
+    borderRadius: 30,
+    backgroundColor: AppColors.onboardingButton,
+  },
+  cancelButtonText: {
+    color: AppColors.white,
+    fontSize: responsiveFontSize(1.3),
+    fontWeight: '700',
+  },
 });
 
 export default VisitLogScreen;

@@ -77,8 +77,9 @@ const UserMemorialsScreen = ({ navigation }) => {
           <MemorialCard
             key={memorial.id}
             memorial={memorial}
-            onEdit={() => navigation.navigate('UserPlaceholder', {
-              title: 'Edit Memorial',
+            onEdit={() => navigation.navigate('CreateMemorialStep1', {
+              editMode: true,
+              memorial,
             })}
             onPrimary={() => navigation.navigate('MemorialProfile', {
               memorial,

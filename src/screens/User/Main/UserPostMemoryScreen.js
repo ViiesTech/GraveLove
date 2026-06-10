@@ -1,5 +1,10 @@
-import React, { useState } from 'react';
-import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
+import { Image, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import {
+  BottomSheetBackdrop,
+  BottomSheetModal,
+  BottomSheetScrollView,
+} from '@gorhom/bottom-sheet';
 import AppButton from '../../../components/AppButton';
 import AppIcon from '../../../components/AppIcon';
 import AppImageHeader from '../../../components/AppImageHeader';
@@ -19,14 +24,24 @@ const categories = ['Tribute', 'Visit', 'Celebration', 'Memory', 'Gratitude'];
 
 const UserPostMemoryScreen = ({ navigation }) => {
   const [selectedCategory, setSelectedCategory] = useState('Tribute');
+  const shareSheetRef = useRef(null);
+  const shareSnapPoints = useMemo(() => ['90%'], []);
+
+  const openShareSheet = useCallback(() => {
+    shareSheetRef.current?.present();
+  }, []);
+
+  const closeShareSheet = useCallback(() => {
+    shareSheetRef.current?.dismiss();
+  }, []);
 
   return (
     <ScreenWrapper isScroll isKeyboardAvoiding contentContainerStyle={styles.content}>
       <AppImageHeader
         image={AppAssets.images.userDashboardFront}
         onBack={() => navigation.goBack()}
-        title="Post a Memory"
-        subtitle="Share a tribute with the community"
+        title="Share Your Memory"
+        subtitle="Honor your loved one with a tribute"
         height={responsiveHeight(20.6)}
       />
       <View style={styles.body}>
@@ -77,13 +92,32 @@ const UserPostMemoryScreen = ({ navigation }) => {
           <PhotoButton icon="photo-camera" title="Take Photo" />
           <PhotoButton icon="image" title={'Choose from\nGallery'} />
         </View>
+
+        <LineBreak height={2.4} />
+        <View style={styles.guidelinesCard}>
+          <View style={styles.guidelinesIcon}>
+            <AppIcon name="info-outline" color={AppColors.themeColor} size={16} />
+          </View>
+          <View style={styles.guidelinesCopy}>
+            <AppText style={styles.guidelinesTitle}>Community Guidelines</AppText>
+            <LineBreak height={0.4} />
+            <AppText style={styles.guidelinesText}>
+              Your post will be visible to all Memorial Care community members. Please ensure your content is respectful and appropriate.
+            </AppText>
+          </View>
+        </View>
         <LineBreak height={2.6} />
         <AppButton
           style={styles.postButton}
-          onPress={() => navigation.navigate('UserTabs', { screen: 'UserHome' })}>
+          onPress={openShareSheet}>
           Share Memory
         </AppButton>
       </View>
+      <SharePostMemorySheet
+        bottomSheetRef={shareSheetRef}
+        onClose={closeShareSheet}
+        snapPoints={shareSnapPoints}
+      />
     </ScreenWrapper>
   );
 };
@@ -104,6 +138,120 @@ const PhotoButton = ({ icon, title }) => (
     <AppIcon name={icon} color={AppColors.white} size={24} />
     <AppText style={styles.photoText}>{title}</AppText>
   </TouchableOpacity>
+);
+
+const SharePostMemorySheet = ({ bottomSheetRef, onClose, snapPoints }) => {
+  const renderBackdrop = useCallback(
+    props => (
+      <BottomSheetBackdrop
+        {...props}
+        appearsOnIndex={0}
+        disappearsOnIndex={-1}
+        opacity={0.45}
+        pressBehavior="close"
+      />
+    ),
+    [],
+  );
+
+  return (
+    <BottomSheetModal
+      ref={bottomSheetRef}
+      snapPoints={snapPoints}
+      backdropComponent={renderBackdrop}
+      backgroundStyle={styles.shareSheetBackground}
+      handleIndicatorStyle={styles.dragHandle}
+      handleStyle={styles.sheetHandle}
+      enablePanDownToClose
+      keyboardBlurBehavior="restore"
+      keyboardBehavior="interactive">
+      <BottomSheetScrollView
+        showsVerticalScrollIndicator={false}
+        style={styles.shareScroll}
+        contentContainerStyle={styles.shareScrollContent}>
+        <View style={styles.previewCard}>
+          <View style={styles.previewUserRow}>
+            <Image source={AppAssets.images.profilePic} style={styles.previewAvatar} />
+            <View>
+              <AppText style={styles.previewName}>Sarah Johnson</AppText>
+              <AppText style={styles.previewSub}>In loving memory of Robert Johnson</AppText>
+            </View>
+          </View>
+          <LineBreak height={1.6} />
+          <AppText style={styles.previewText}>
+            Today marks one year since we said goodbye. Your laughter still echoes in our hearts...
+          </AppText>
+          <LineBreak height={1.6} />
+          <Image source={AppAssets.images.headerImage} style={styles.previewImage} />
+        </View>
+        <LineBreak height={3.2} />
+        <AppText style={styles.shareLabel}>Share via:</AppText>
+        <LineBreak height={1.6} />
+        <View style={styles.shareIconRow}>
+          <ShareIcon icon="facebook" label="Facebook" />
+          <ShareIcon icon="chat-bubble-outline" label="Twitter" />
+          <ShareIcon icon="chat" label="WhatsApp" />
+          <ShareIcon icon="email" label="Email" />
+        </View>
+        <LineBreak height={2.4} />
+        <AppText style={styles.shareLabel}>Send to friends:</AppText>
+        <LineBreak height={1.2} />
+        <View style={styles.friendBox}>
+          <View style={styles.friendIcon}>
+            <AppIcon name="send" color={AppColors.white} size={20} />
+          </View>
+          <View>
+            <AppText style={styles.previewName}>Send to Memorial Care Friends</AppText>
+            <AppText style={styles.previewSub}>Share privately within the app</AppText>
+          </View>
+        </View>
+        <LineBreak height={2.4} />
+        <AppText style={styles.shareLabel}>Add a personal message (optional):</AppText>
+        <LineBreak height={0.8} />
+        <TextInput
+          placeholder="Write a message to share with this memory..."
+          placeholderTextColor={AppColors.homeTextMuted}
+          style={styles.shareMessage}
+        />
+        <LineBreak height={2.4} />
+        <AppText style={styles.shareLabel}>Or copy link:</AppText>
+        <LineBreak height={0.8} />
+        <View style={styles.copyRow}>
+          <View style={styles.copyInput}>
+            <AppText numberOfLines={1} style={styles.previewSub}>
+              https://memorialcare.app/post/1...
+            </AppText>
+          </View>
+          <TouchableOpacity activeOpacity={0.82} onPress={onClose} style={styles.copyButton}>
+            <AppIcon name="content-copy" color={AppColors.white} size={16} />
+            <AppText style={styles.copyText}>Copy</AppText>
+          </TouchableOpacity>
+        </View>
+        <LineBreak height={3.2} />
+        <View style={styles.disclaimer}>
+          <AppIcon name="info-outline" color={AppColors.white} size={20} />
+          <View style={styles.disclaimerCopy}>
+            <AppText style={styles.previewName}>Sharing with Respect</AppText>
+            <AppText style={styles.previewSub}>
+              Please be thoughtful when sharing memories. Ensure you have permission to share content.
+            </AppText>
+          </View>
+        </View>
+      </BottomSheetScrollView>
+      <View style={styles.sheetFooter}>
+        <AppButton style={styles.postButton} onPress={onClose}>Cancel</AppButton>
+      </View>
+    </BottomSheetModal>
+  );
+};
+
+const ShareIcon = ({ icon, label }) => (
+  <View style={styles.shareIconItem}>
+    <View style={styles.shareIconCircle}>
+      <AppIcon name={icon} color={AppColors.themeColor} size={24} />
+    </View>
+    <AppText style={styles.shareIconLabel}>{label}</AppText>
+  </View>
 );
 
 const styles = StyleSheet.create({
@@ -130,7 +278,187 @@ const styles = StyleSheet.create({
   photoRow: { flexDirection: 'row', gap: responsiveWidth(3.8) },
   photoBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: responsiveHeight(8.2), borderRadius: 16, backgroundColor: AppColors.memorialCard, borderWidth: 0.5, borderColor: AppColors.homeBorder },
   photoText: { color: AppColors.white, fontSize: responsiveFontSize(1.25), marginTop: responsiveHeight(0.6), textAlign: 'center' },
+  guidelinesCard: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    padding: responsiveWidth(4),
+    borderRadius: 16,
+    borderWidth: 0.5,
+    borderColor: AppColors.homeBorder,
+    backgroundColor: AppColors.memorialCard,
+  },
+  guidelinesIcon: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: responsiveWidth(6),
+    height: responsiveWidth(6),
+    borderRadius: responsiveWidth(3),
+    backgroundColor: AppColors.white,
+    marginRight: responsiveWidth(3),
+  },
+  guidelinesCopy: {
+    flex: 1,
+  },
+  guidelinesTitle: {
+    color: AppColors.white,
+    fontSize: responsiveFontSize(1.3),
+    fontWeight: '700',
+  },
+  guidelinesText: {
+    color: AppColors.homeTextMuted,
+    fontSize: responsiveFontSize(1.12),
+    lineHeight: responsiveHeight(1.75),
+  },
   postButton: { backgroundColor: AppColors.onboardingButton, borderRadius: responsiveHeight(3) },
+  shareSheetBackground: {
+    backgroundColor: AppColors.memorialCard,
+  },
+  sheetHandle: {
+    paddingBottom: responsiveHeight(1.2),
+    paddingTop: responsiveHeight(1.4),
+  },
+  dragHandle: {
+    width: responsiveWidth(10),
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.28)',
+  },
+  shareScroll: {
+    flex: 1,
+  },
+  shareScrollContent: {
+    paddingHorizontal: responsiveWidth(5.8),
+    paddingBottom: responsiveHeight(2.4),
+  },
+  sheetFooter: {
+    paddingHorizontal: responsiveWidth(5.8),
+    paddingBottom: responsiveHeight(2),
+    paddingTop: responsiveHeight(1.2),
+    backgroundColor: AppColors.memorialCard,
+  },
+  previewCard: {
+    padding: responsiveWidth(4),
+    borderWidth: 0.5,
+    borderColor: AppColors.homeBorder,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  previewUserRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+  },
+  previewAvatar: {
+    width: responsiveWidth(8),
+    height: responsiveWidth(8),
+    borderRadius: responsiveWidth(4),
+    marginRight: responsiveWidth(3),
+  },
+  previewName: {
+    color: AppColors.white,
+    fontSize: responsiveFontSize(1.25),
+    fontWeight: '700',
+  },
+  previewSub: {
+    color: AppColors.homeTextMuted,
+    fontSize: responsiveFontSize(1),
+  },
+  previewText: {
+    color: AppColors.white,
+    fontSize: responsiveFontSize(1.22),
+    lineHeight: responsiveFontSize(1.8),
+  },
+  previewImage: {
+    width: '100%',
+    height: responsiveHeight(14),
+    borderRadius: 12,
+  },
+  shareLabel: {
+    color: AppColors.homeTextMuted,
+    fontSize: responsiveFontSize(1.25),
+  },
+  shareIconRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  shareIconItem: {
+    alignItems: 'center',
+  },
+  shareIconCircle: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: responsiveWidth(13),
+    height: responsiveWidth(13),
+    borderRadius: responsiveWidth(6.5),
+    backgroundColor: AppColors.white,
+  },
+  shareIconLabel: {
+    color: AppColors.homeTextMuted,
+    fontSize: responsiveFontSize(1.05),
+    marginTop: responsiveHeight(0.8),
+  },
+  friendBox: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    padding: responsiveWidth(4),
+    borderWidth: 0.5,
+    borderColor: AppColors.homeBorder,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  friendIcon: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: responsiveWidth(9),
+    height: responsiveWidth(9),
+    borderRadius: responsiveWidth(4.5),
+    marginRight: responsiveWidth(4),
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  shareMessage: {
+    height: responsiveHeight(6.5),
+    paddingHorizontal: responsiveWidth(4),
+    borderRadius: 12,
+    color: AppColors.white,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  copyRow: {
+    flexDirection: 'row',
+    gap: responsiveWidth(3),
+  },
+  copyInput: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: responsiveWidth(4),
+    borderWidth: 0.5,
+    borderColor: AppColors.homeBorder,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  copyButton: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    paddingHorizontal: responsiveWidth(4),
+    borderRadius: 12,
+    backgroundColor: AppColors.onboardingButton,
+  },
+  copyText: {
+    color: AppColors.white,
+    fontSize: responsiveFontSize(1.15),
+    fontWeight: '700',
+    marginLeft: responsiveWidth(2),
+  },
+  disclaimer: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    padding: responsiveWidth(3),
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  disclaimerCopy: {
+    flex: 1,
+    marginLeft: responsiveWidth(3),
+  },
 });
 
 export default UserPostMemoryScreen;

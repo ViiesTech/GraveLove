@@ -16,7 +16,7 @@ import {
 
 const options = [
   ['lock-outline', 'Change Password', 'EditProfile', false],
-  ['shield', 'Privacy Policy', 'UserPlaceholder', false],
+  ['shield', 'Privacy Policy', 'PrivacyPolicy', false],
   ['warning-amber', 'Delete Account', null, true],
 ];
 
@@ -40,7 +40,7 @@ const PrivacySecurityScreen = ({ navigation }) => (
               navigation.goBack();
               return;
             }
-            navigation.navigate(item[2], item[2] === 'UserPlaceholder' ? { title: item[1] } : undefined);
+            navigation.navigate(item[2]);
           }}
           contentStyle={styles.optionCard}>
           <View style={styles.iconCircle}>

@@ -184,9 +184,7 @@ const LocationCard = ({ navigation }) => (
     </View>
     <TouchableOpacity
       activeOpacity={0.82}
-      onPress={() =>
-        navigation.navigate('UserPlaceholder', { title: 'Directions' })
-      }
+      onPress={() => navigation.navigate('MapSelection')}
       style={styles.directionsBtn}
     >
       <AppText style={styles.directionsText}>Directions</AppText>

@@ -3,7 +3,6 @@ import { StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import AppIcon from '../components/AppIcon';
-import PlaceholderScreen from '../screens/PlaceholderScreen';
 import AddTributeScreen from '../screens/User/Main/AddTributeScreen';
 import BookingServiceStep2 from '../screens/User/Main/BookingServiceStep2';
 import BookingServiceStep3 from '../screens/User/Main/BookingServiceStep3';
@@ -21,6 +20,7 @@ import MemorialWallScreen from '../screens/User/Main/MemorialWallScreen';
 import MessageSentScreen from '../screens/User/Main/MessageSentScreen';
 import PaymentStatusScreen from '../screens/User/Main/PaymentStatusScreen';
 import PrivacySecurityScreen from '../screens/User/Main/PrivacySecurityScreen';
+import PrivacyPolicyScreen from '../screens/User/Main/PrivacyPolicyScreen';
 import PurchaseHeartsScreen from '../screens/User/Main/PurchaseHeartsScreen';
 import RecentlyCompletedJobsScreen from '../screens/Vendor/Main/RecentlyCompletedJobsScreen';
 import SelectSubscriptionsScreen from '../screens/User/Main/SelectSubscriptionsScreen';
@@ -85,6 +85,7 @@ const recolorTabSvg = (svg, color) =>
 
 const tabIconMap = {
   UserHome: AppSvgAssets.home,
+  UserMostLovedMemories: AppSvgAssets.memorials,
   UserMemorials: AppSvgAssets.memorials,
   UserProfile: AppSvgAssets.profile,
 };
@@ -96,7 +97,7 @@ const UserTabIcon = ({ color, routeName }) => {
 
   return (
     <AppIcon
-      svg={recolorTabSvg(tabIconMap[routeName], color)}
+      svg={recolorTabSvg(tabIconMap[routeName] || AppSvgAssets.home, color)}
       size={28}
     />
   );
@@ -127,9 +128,9 @@ const UserTabs = () => (
       options={{ tabBarIcon: makeTabIcon('UserHome') }}
     />
     <UserTabNavigator.Screen
-      name="UserMemorials"
-      component={UserMemorialsScreen}
-      options={{ tabBarIcon: makeTabIcon('UserMemorials') }}
+      name="UserMostLovedMemories"
+      component={UserMostLovedMemoriesScreen}
+      options={{ tabBarIcon: makeTabIcon('UserMostLovedMemories') }}
     />
     <UserTabNavigator.Screen
       name="Search"
@@ -197,6 +198,10 @@ export const UserMain = () => (
     <UserMainStack.Screen
       name="UserTabs"
       component={UserTabs}
+    />
+    <UserMainStack.Screen
+      name="UserMemorials"
+      component={UserMemorialsScreen}
     />
     <UserMainStack.Screen
       name="UserAddMemorial"
@@ -347,6 +352,10 @@ export const UserMain = () => (
       component={PrivacySecurityScreen}
     />
     <UserMainStack.Screen
+      name="PrivacyPolicy"
+      component={PrivacyPolicyScreen}
+    />
+    <UserMainStack.Screen
       name="UserPostMemory"
       component={UserPostMemoryScreen}
     />
@@ -357,10 +366,6 @@ export const UserMain = () => (
     <UserMainStack.Screen
       name="MessageSent"
       component={MessageSentScreen}
-    />
-    <UserMainStack.Screen
-      name="UserPlaceholder"
-      component={PlaceholderScreen}
     />
   </UserMainStack.Navigator>
 );

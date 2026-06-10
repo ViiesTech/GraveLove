@@ -65,7 +65,7 @@ const quickActions = [
     }),
     subtitle: 'Share & connect',
     title: 'Community',
-    route: 'UserPostMemory',
+    route: 'UserMostLovedMemories',
   },
   {
     svg: recolorHomeSvg(AppSvgAssets.visitLog, {
@@ -124,7 +124,7 @@ const UserHomeScreen = ({ navigation }) => {
       return;
     }
     if (title === 'Community') {
-      navigation.navigate('UserPostMemory');
+      navigation.navigate('UserMostLovedMemories');
       return;
     }
     if (title === 'Search') {
@@ -144,7 +144,7 @@ const UserHomeScreen = ({ navigation }) => {
       return;
     }
 
-    navigation.navigate('UserPlaceholder', { title });
+    navigation.navigate('UserHome');
   };
 
   return (
@@ -213,7 +213,7 @@ const QuickNavigationModal = ({ isVisible, navigation, onClose, translateX }) =>
   const handleNavigate = (route, label) => {
     onClose();
     setTimeout(() => {
-      navigation.navigate(route, route === 'UserPlaceholder' ? { title: label } : undefined);
+      navigation.navigate(route);
     }, 210);
   };
 
