@@ -4,6 +4,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
 import AppIcon from '../components/AppIcon';
 import PlaceholderScreen from '../screens/PlaceholderScreen';
+import AddTributeScreen from '../screens/User/Main/AddTributeScreen';
 import BookingServiceStep2 from '../screens/User/Main/BookingServiceStep2';
 import BookingServiceStep3 from '../screens/User/Main/BookingServiceStep3';
 import BookingServiceStep4 from '../screens/User/Main/BookingServiceStep4';
@@ -16,10 +17,14 @@ import HelpSupportScreen from '../screens/User/Main/HelpSupportScreen';
 import HealingSupportScreen from '../screens/User/Main/HealingSupportScreen';
 import MapSelectionScreen from '../screens/User/Main/MapSelectionScreen';
 import MemorialProfileScreen from '../screens/User/Main/MemorialProfileScreen';
+import MemorialWallScreen from '../screens/User/Main/MemorialWallScreen';
 import MessageSentScreen from '../screens/User/Main/MessageSentScreen';
+import PaymentStatusScreen from '../screens/User/Main/PaymentStatusScreen';
 import PrivacySecurityScreen from '../screens/User/Main/PrivacySecurityScreen';
 import PurchaseHeartsScreen from '../screens/User/Main/PurchaseHeartsScreen';
+import RecentlyCompletedJobsScreen from '../screens/Vendor/Main/RecentlyCompletedJobsScreen';
 import SelectSubscriptionsScreen from '../screens/User/Main/SelectSubscriptionsScreen';
+import ServicePaymentScreen from '../screens/User/Main/ServicePaymentScreen';
 import ServiceBookingDetailScreen from '../screens/User/Main/ServiceBookingDetailScreen';
 import ShareHeartsScreen from '../screens/User/Main/ShareHeartsScreen';
 import SearchScreen from '../screens/User/Main/SearchScreen';
@@ -35,11 +40,17 @@ import UserMostLovedMemoriesScreen from '../screens/User/Main/UserMostLovedMemor
 import UserPostMemoryScreen from '../screens/User/Main/UserPostMemoryScreen';
 import UserProfileScreen from '../screens/User/Main/UserProfileScreen';
 import UserVendorsScreen from '../screens/User/Main/UserVendorsScreen';
+import VendorFeedbackScreen from '../screens/User/Main/VendorFeedbackScreen';
 import VendorCheckoutScreen from '../screens/User/Main/VendorCheckoutScreen';
 import VendorServiceSelectionScreen from '../screens/User/Main/VendorServiceSelectionScreen';
+import VendorServiceRecordsScreen from '../screens/User/Main/VendorServiceRecordsScreen';
+import ViewBookingDetailsScreen from '../screens/User/Main/ViewBookingDetailsScreen';
+import ViewMemorialPhotosScreen from '../screens/User/Main/ViewMemorialPhotosScreen';
+import ViewMemorialServiceInfoScreen from '../screens/User/Main/ViewMemorialServiceInfoScreen';
 import VisitLogScreen from '../screens/User/Main/VisitLogScreen';
 import VendorAvailableJobsScreen from '../screens/Vendor/Main/VendorAvailableJobsScreen';
 import VendorChatScreen from '../screens/Vendor/Main/VendorChatScreen';
+import VendorCompletionProofScreen from '../screens/Vendor/Main/VendorCompletionProofScreen';
 import VendorDashboardScreen from '../screens/Vendor/Main/VendorDashboardScreen';
 import VendorEarningsScreen from '../screens/Vendor/Main/VendorEarningsScreen';
 import VendorJobDetailsScreen from '../screens/Vendor/Main/VendorJobDetailsScreen';
@@ -208,6 +219,22 @@ export const UserMain = () => (
       component={MemorialProfileScreen}
     />
     <UserMainStack.Screen
+      name="MemorialWall"
+      component={MemorialWallScreen}
+    />
+    <UserMainStack.Screen
+      name="AddTribute"
+      component={AddTributeScreen}
+    />
+    <UserMainStack.Screen
+      name="ViewMemorialPhotos"
+      component={ViewMemorialPhotosScreen}
+    />
+    <UserMainStack.Screen
+      name="ViewMemorialServiceInfo"
+      component={ViewMemorialServiceInfoScreen}
+    />
+    <UserMainStack.Screen
       name="BookService"
       component={BookServiceScreen}
     />
@@ -242,6 +269,30 @@ export const UserMain = () => (
     <UserMainStack.Screen
       name="UserBookings"
       component={UserBookingsScreen}
+    />
+    <UserMainStack.Screen
+      name="ViewBookingDetails"
+      component={ViewBookingDetailsScreen}
+    />
+    <UserMainStack.Screen
+      name="ServicePayment"
+      component={ServicePaymentScreen}
+    />
+    <UserMainStack.Screen
+      name="PaymentStatus"
+      component={PaymentStatusScreen}
+    />
+    <UserMainStack.Screen
+      name="VendorServiceRecords"
+      component={VendorServiceRecordsScreen}
+    />
+    <UserMainStack.Screen
+      name="VendorFeedback"
+      component={VendorFeedbackScreen}
+    />
+    <UserMainStack.Screen
+      name="FeedbackToVendor"
+      component={VendorFeedbackScreen}
     />
     <UserMainStack.Screen
       name="UpcomingServiceDetails"
@@ -334,6 +385,14 @@ export const VendorMain = () => (
     <VendorMainStack.Screen
       name="VendorTaskDetails"
       component={VendorTaskDetailsScreen}
+    />
+    <VendorMainStack.Screen
+      name="VendorCompletionProof"
+      component={VendorCompletionProofScreen}
+    />
+    <VendorMainStack.Screen
+      name="RecentlyCompletedJobs"
+      component={RecentlyCompletedJobsScreen}
     />
     <VendorMainStack.Screen
       name="VendorNotifications"

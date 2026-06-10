@@ -157,9 +157,7 @@ const ActionButtons = ({ navigation }) => (
     </TouchableOpacity>
     <TouchableOpacity
       activeOpacity={0.82}
-      onPress={() =>
-        navigation.navigate('UserPlaceholder', { title: 'Memorial Wall' })
-      }
+      onPress={() => navigation.navigate('MemorialWall')}
       style={styles.wallBtn}
     >
       <AppIcon
@@ -251,18 +249,14 @@ const TributesTab = ({ navigation }) => (
     <View style={styles.tributeButtons}>
       <TouchableOpacity
         activeOpacity={0.82}
-        onPress={() =>
-          navigation.navigate('UserPlaceholder', { title: 'All Tributes' })
-        }
+        onPress={() => navigation.navigate('MemorialWall')}
         style={styles.outlineAction}
       >
         <AppText style={styles.outlineActionText}>View All Tributes</AppText>
       </TouchableOpacity>
       <TouchableOpacity
         activeOpacity={0.82}
-        onPress={() =>
-          navigation.navigate('UserPlaceholder', { title: 'Add Tribute' })
-        }
+        onPress={() => navigation.navigate('AddTribute')}
         style={styles.filledAction}
       >
         <AppIcon iconSet="ion" name="heart" color={AppColors.white} size={18} />
@@ -318,9 +312,7 @@ const PhotosTab = ({ navigation }) => (
     <LineBreak height={2.58} />
     <TouchableOpacity
       activeOpacity={0.82}
-      onPress={() =>
-        navigation.navigate('UserPlaceholder', { title: 'All Photos' })
-      }
+      onPress={() => navigation.navigate('ViewMemorialPhotos')}
       style={styles.fullButton}
     >
       <AppText style={styles.fullButtonText}>View All 89 Photos</AppText>
@@ -352,9 +344,7 @@ const InfoTab = ({ navigation }) => (
       <LineBreak height={2.58} />
       <TouchableOpacity
         activeOpacity={0.82}
-        onPress={() =>
-          navigation.navigate('UserPlaceholder', { title: 'All Services' })
-        }
+        onPress={() => navigation.navigate('ViewMemorialServiceInfo')}
         style={styles.fullButton}
       >
         <AppText style={styles.fullButtonText}>View All Services</AppText>

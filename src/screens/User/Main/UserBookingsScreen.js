@@ -50,7 +50,10 @@ const UserBookingsScreen = ({ navigation }) => (
         <BookingCard
           key={`${booking.service}-${booking.date}`}
           booking={booking}
-          onPress={() => navigation.navigate('UpcomingServiceDetails', { booking })}
+          onPress={() => navigation.navigate('ViewBookingDetails', {
+            booking,
+            isCompleted: booking.status !== 'In Progress',
+          })}
         />
       ))}
     </View>

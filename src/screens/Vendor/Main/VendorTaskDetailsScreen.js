@@ -32,8 +32,11 @@ const VendorTaskDetailsScreen = ({ navigation, route }) => {
       setStatus('In Progress');
       return;
     }
-    setStatus('Completed');
-    setSentVisible(true);
+    navigation.navigate('VendorCompletionProof', {
+      cemeteryName: params.title || 'Peaceful Gardens Cemetery',
+      graveLocation: params.subtitle || 'Plot 54, Section C',
+      serviceName: params.service || 'Grave Cleaning',
+    });
   };
 
   return (
