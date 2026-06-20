@@ -23,6 +23,7 @@ export const AppAssets = {
     userDashboardFront: require('../assets/images/userDashboardFront.png'),
     profilePic: require('../assets/images/profile_pic.png'),
     memorialImage: require('../assets/images/memorialImage.png'),
+    memorialImage2: require('../assets/images/memorialImage2.png'),
     authLogo: require('../assets/images/gl_logo_authentication.png'),
     bgImage: require('../assets/images/bgImage.png'),
     mapViewImage: require('../assets/images/mapViewImage.png'),

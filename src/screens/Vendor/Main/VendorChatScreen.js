@@ -25,7 +25,12 @@ const VendorChatScreen = ({ navigation }) => (
       <AppText style={styles.title}>Messages</AppText>
     </View>
     <View style={styles.body}>
-      <AppTextInput iconName="search" placeholder="Search clients..." inputStyle={styles.inputText} />
+      <AppTextInput
+        iconName="search"
+        placeholder="Search clients..."
+        inputStyle={styles.inputText}
+        style={styles.searchInput}
+      />
       <LineBreak height={1.6} />
       {chats.map(chat => (
         <GlassCard
@@ -52,9 +57,10 @@ const VendorChatScreen = ({ navigation }) => (
 
 const styles = StyleSheet.create({
   content: { paddingBottom: responsiveHeight(9) },
-  header: { padding: responsiveWidth(4), backgroundColor: 'rgba(4,47,103,0.5)' },
+  header: { padding: responsiveWidth(4), backgroundColor: 'transparent' },
   title: { color: AppColors.white, fontSize: responsiveFontSize(2.45), fontWeight: '700' },
   body: { padding: responsiveWidth(4) },
+  searchInput: { borderRadius: 10 },
   inputText: { paddingHorizontal: responsiveWidth(2) },
   chatCard: { alignItems: 'center', flexDirection: 'row', marginBottom: responsiveHeight(1.3), backgroundColor: AppColors.memorialCard, borderColor: AppColors.homeBorder },
   chatIcon: { alignItems: 'center', justifyContent: 'center', width: responsiveWidth(12), height: responsiveWidth(12), borderRadius: responsiveWidth(6), borderWidth: 0.5, borderColor: AppColors.white, backgroundColor: 'rgba(255,255,255,0.12)' },

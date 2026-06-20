@@ -26,9 +26,13 @@ const ScreenWrapper = ({
   useBackgroundImage = true,
   style,
 }) => {
+  const shouldAdjustKeyboardInsets =
+    scrollProps?.automaticallyAdjustKeyboardInsets ??
+    (Platform.OS === 'ios' && !isKeyboardAvoiding);
+
   const content = isScroll ? (
     <ScrollView
-      automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+      automaticallyAdjustKeyboardInsets={shouldAdjustKeyboardInsets}
       keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
       keyboardShouldPersistTaps={keyboardShouldPersistTaps}
       showsVerticalScrollIndicator={false}

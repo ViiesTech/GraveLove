@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Alert, StyleSheet, TouchableOpacity, View } from 'react-native';
 import AppButton from '../../../components/AppButton';
 import AppIcon from '../../../components/AppIcon';
@@ -7,29 +7,15 @@ import AppTextInput from '../../../components/AppTextInput';
 import GlassCard from '../../../components/GlassCard';
 import LineBreak from '../../../components/LineBreak';
 import ScreenWrapper from '../../../components/ScreenWrapper';
+import {
+  useGetVendorProfileQuery,
+} from '../../../redux/api/vendorApi';
 import { AppColors } from '../../../utils/AppColors';
 import {
   responsiveFontSize,
   responsiveHeight,
   responsiveWidth,
 } from '../../../utils/Responsive_Dimensions';
-
-const initialServices = [
-  {
-    id: '1',
-    description: 'Cleaning, flowers, and light care',
-    name: 'Memorial Upkeep',
-    price: '120',
-    type: 'Maintenance',
-  },
-  {
-    id: '2',
-    description: 'Fresh flowers placed at the grave',
-    name: 'Fresh Flowers Placement',
-    price: '75',
-    type: 'Garden Care',
-  },
-];
 
 const emptyService = () => ({
   id: `${Date.now()}`,
@@ -39,8 +25,30 @@ const emptyService = () => ({
   type: '',
 });
 
-const VendorServiceEditScreen = ({ navigation }) => {
-  const [services, setServices] = useState(initialServices);
+const mapApiService = service => ({
+  id: service?.id ? `${service.id}` : `${Date.now()}`,
+  apiId: service?.id,
+  description: service?.description || '',
+  name: service?.service_name || service?.name || '',
+  price: service?.price?.toString() || '',
+  type: service?.service_type || service?.type || '',
+});
+
+const VendorServiceEditScreen = ({ navigation, route }) => {
+  const { data: profileData = {} } = useGetVendorProfileQuery();
+  const currentServices = useMemo(
+    () => route?.params?.services || profileData?.vendor_business?.services || profileData?.business?.services || [],
+    [profileData?.business?.services, profileData?.vendor_business?.services, route?.params?.services],
+  );
+  const [services, setServices] = useState([]);
+
+  useEffect(() => {
+    if (currentServices?.length) {
+      setServices(currentServices.map(mapApiService));
+    } else {
+      setServices([emptyService()]);
+    }
+  }, [currentServices]);
 
   const updateService = (id, key, value) => {
     setServices(current =>
@@ -59,6 +67,10 @@ const VendorServiceEditScreen = ({ navigation }) => {
         onPress: () => setServices(current => current.filter(item => item.id !== id)),
       },
     ]);
+  };
+
+  const handleSave = () => {
+    navigation.goBack();
   };
 
   return (
@@ -97,7 +109,7 @@ const VendorServiceEditScreen = ({ navigation }) => {
         Add Service
       </AppButton>
       <LineBreak height={1.6} />
-      <AppButton style={styles.primaryButton} onPress={() => navigation.goBack()}>
+      <AppButton style={styles.primaryButton} onPress={handleSave}>
         Save Changes
       </AppButton>
     </ScreenWrapper>

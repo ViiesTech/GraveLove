@@ -1,10 +1,15 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import AppText from '../../../components/AppText';
 import CreateMemorialHeader from '../../../components/CreateMemorialHeader';
 import LineBreak from '../../../components/LineBreak';
 import ScreenWrapper from '../../../components/ScreenWrapper';
+import {
+  useCreateClientMemorialMutation,
+  useUpdateClientMemorialMutation,
+} from '../../../redux/api/userApi';
 import { AppColors } from '../../../utils/AppColors';
+import { showToast } from '../../../utils/Toast';
 import {
   responsiveFontSize,
   responsiveHeight,
@@ -23,45 +28,75 @@ const nextItems = [
   'Add photos and tributes',
 ];
 
-const CreateMemorialStep3 = ({ navigation }) => (
-  <ScreenWrapper safeAreaEdges={[]} style={styles.screen}>
-    <CreateMemorialHeader onBack={() => navigation.goBack()} step={3} />
-    <ScrollView
-      bounces
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={styles.content}>
-      <FieldLabel label="Biography (Optional)" />
-      <AppText style={styles.storyLabel}>Share Their Story</AppText>
-      <LineBreak height={0.85} />
-      <TextField
-        multiline
-        placeholder="Share memories, achievements, and what made them special..."
-      />
-      <LineBreak height={0.85} />
-      <AppText style={styles.helperText}>
-        This will appear on their memorial wall for family and friends
-      </AppText>
+const CreateMemorialStep3 = ({ navigation, route }) => {
+  const formData = route?.params?.formData || {};
+  const memorialId = route?.params?.memorialId;
+  const [biography, setBiography] = useState(formData.biography || formData.bio || '');
+  const [createMemorial, { isLoading: isCreating }] = useCreateClientMemorialMutation();
+  const [updateMemorial, { isLoading: isUpdating }] = useUpdateClientMemorialMutation();
+  const isLoading = isCreating || isUpdating;
 
-      <LineBreak height={2.58} />
-      <View style={styles.nextCard}>
-        <AppText style={styles.nextTitle}>What's Next?</AppText>
-        <LineBreak height={1.29} />
-        {nextItems.map(item => (
-          <Bullet key={item} text={item} />
-        ))}
-      </View>
+  const submitMemorial = async () => {
+    const body = {
+      ...formData,
+      biography: biography.trim(),
+      bio: biography.trim(),
+    };
 
-      <LineBreak height={4.3} />
-      <BackContinueButtons
-        continueLabel="Create Memorial"
-        onBack={() => navigation.goBack()}
-        onContinue={() => navigation.navigate('MemorialProfile')}
-      />
-      <LineBreak height={4.3} />
-    </ScrollView>
-  </ScreenWrapper>
-);
+    try {
+      const response = memorialId
+        ? await updateMemorial({ memorialId, body }).unwrap()
+        : await createMemorial(body).unwrap();
+      showToast(response?.message || (memorialId ? 'Memorial updated' : 'Memorial created'));
+      navigation.navigate('UserMemorials');
+    } catch (error) {
+      showToast('Memorial failed', error?.message || 'Please check details and try again.');
+    }
+  };
+
+  return (
+    <ScreenWrapper safeAreaEdges={[]} style={styles.screen}>
+      <CreateMemorialHeader onBack={() => navigation.goBack()} step={3} />
+      <ScrollView
+        bounces
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.content}>
+        <FieldLabel label="Biography (Optional)" />
+        <AppText style={styles.storyLabel}>Share Their Story</AppText>
+        <LineBreak height={0.85} />
+        <TextField
+          multiline
+          onChangeText={setBiography}
+          placeholder="Share memories, achievements, and what made them special..."
+          value={biography}
+        />
+        <LineBreak height={0.85} />
+        <AppText style={styles.helperText}>
+          This will appear on their memorial wall for family and friends
+        </AppText>
+
+        <LineBreak height={2.58} />
+        <View style={styles.nextCard}>
+          <AppText style={styles.nextTitle}>What's Next?</AppText>
+          <LineBreak height={1.29} />
+          {nextItems.map(item => (
+            <Bullet key={item} text={item} />
+          ))}
+        </View>
+
+        <LineBreak height={4.3} />
+        <BackContinueButtons
+          continueLabel={memorialId ? 'Update Memorial' : 'Create Memorial'}
+          isLoading={isLoading}
+          onBack={() => navigation.goBack()}
+          onContinue={submitMemorial}
+        />
+        <LineBreak height={4.3} />
+      </ScrollView>
+    </ScreenWrapper>
+  );
+};
 
 const Bullet = ({ text }) => (
   <View style={styles.bulletRow}>

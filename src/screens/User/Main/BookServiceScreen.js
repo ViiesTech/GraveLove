@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Image,
   StyleSheet,
@@ -11,6 +11,10 @@ import AppText from '../../../components/AppText';
 import GlassCard from '../../../components/GlassCard';
 import LineBreak from '../../../components/LineBreak';
 import ScreenWrapper from '../../../components/ScreenWrapper';
+import {
+  useGetClientTopVendorsQuery,
+  useGetClientVendorsQuery,
+} from '../../../redux/api/userApi';
 import { AppAssets } from '../../../utils/AppAssets';
 import { AppColors } from '../../../utils/AppColors';
 import {
@@ -19,46 +23,60 @@ import {
   responsiveWidth,
 } from '../../../utils/Responsive_Dimensions';
 
-const vendors = [
-  {
-    id: 1,
-    badge: 'Top Rated 2025',
-    image: AppAssets.images.vendor1,
-    name: 'Wilson Care House',
-    rating: '4.9',
-    reviews: '328 reviews',
-  },
-  {
-    id: 2,
-    badge: 'Best Quality 2025',
-    image: AppAssets.images.vendor2,
-    name: 'Henry Care House',
-    rating: '4.8',
-    reviews: '295 reviews',
-  },
-  {
-    id: 3,
-    badge: 'Most Experienced',
-    image: AppAssets.images.vendor3,
-    name: 'James Care House',
-    rating: '4.9',
-    reviews: '295 reviews',
-  },
-  {
-    id: 4,
-    badge: 'Fastest Response',
-    image: AppAssets.images.vendor4,
-    name: 'David Care House',
-    rating: '4.7',
-    reviews: '295 reviews',
-  },
-];
+const imageSource = () => AppAssets.images.vendor1;
+const vendorBusiness = vendor => vendor?.vendor_business || vendor?.business || vendor || {};
+const pickVendorName = vendor => {
+  const business = vendorBusiness(vendor);
+  return business?.business_name || vendor?.business_name || vendor?.name || vendor?.full_name || 'Vendor';
+};
+const pickVendorImage = vendor => {
+  const business = vendorBusiness(vendor);
+  return business?.profile_picture_url
+    || business?.profile_picture
+    || business?.image_url
+    || business?.image
+    || business?.logo
+    || business?.avatar
+    || vendor?.profile_picture_url
+    || vendor?.profile_picture
+    || vendor?.image_url
+    || vendor?.image
+    || vendor?.logo
+    || vendor?.avatar;
+};
+const pickVendorRating = vendor => (vendor?.rating ?? vendor?.average_rating ?? '0').toString();
+const pickVendorReviews = vendor => vendor?.review_count ?? vendor?.reviews_count ?? vendor?.total_reviews ?? 0;
+const pickVendorBadge = vendor => vendor?.badge?.toString() || 'Vendor';
 
 const BookServiceScreen = ({ navigation }) => {
   const [search, setSearch] = useState('');
-  const visibleVendors = vendors.filter(vendor =>
-    vendor.name.toLowerCase().includes(search.trim().toLowerCase()),
+  const [submittedSearch, setSubmittedSearch] = useState('');
+  const isSearching = submittedSearch.trim().length > 0;
+  const topVendorsQuery = useGetClientTopVendorsQuery(
+    { perPage: 20 },
+    { skip: isSearching },
   );
+  const vendorsQuery = useGetClientVendorsQuery(
+    { search: submittedSearch, perPage: 30 },
+    { skip: !isSearching },
+  );
+  const activeQuery = isSearching ? vendorsQuery : topVendorsQuery;
+  const vendors = useMemo(() => activeQuery.data || [], [activeQuery.data]);
+  const { isError, isFetching, isLoading } = activeQuery;
+
+  useEffect(() => {
+    console.log('[BOOK SERVICE VENDORS RESPONSE]', {
+      mode: isSearching ? 'search' : 'top-vendors',
+      raw: activeQuery.data,
+      count: vendors.length,
+      vendors: vendors.map(vendor => ({
+        id: vendor?.id,
+        name: pickVendorName(vendor),
+        rawImage: pickVendorImage(vendor),
+        business: vendorBusiness(vendor),
+      })),
+    });
+  }, [activeQuery.data, isSearching, vendors]);
 
   return (
     <ScreenWrapper
@@ -76,28 +94,37 @@ const BookServiceScreen = ({ navigation }) => {
         <View style={styles.searchBox}>
           <AppIcon
             name="calendar-today"
-            color={AppColors.homeTextMuted}
+            color={AppColors.white}
             size={responsiveWidth(4.8)}
           />
           <TextInput
             value={search}
             onChangeText={setSearch}
+            onSubmitEditing={({ nativeEvent }) => setSubmittedSearch(nativeEvent.text.trim())}
             placeholder="Search service..."
             placeholderTextColor={AppColors.homeTextMuted}
             style={styles.searchInput}
+            returnKeyType="search"
           />
         </View>
 
         <LineBreak height={2.58} />
 
-        {visibleVendors.map(vendor => (
+        {isLoading || isFetching ? <StateText text="Loading vendors..." /> : null}
+        {isError ? <StateText text="Unable to load vendors right now." /> : null}
+        {!isLoading && !isFetching && !isError && vendors.length === 0 ? (
+          <StateText text="No vendors found." />
+        ) : null}
+
+        {vendors.map(vendor => (
           <VendorCard
             key={vendor.id}
             vendor={vendor}
             onPress={() =>
               navigation.navigate('VendorServiceSelection', {
                 vendorId: vendor.id,
-                vendorName: vendor.name,
+                vendorName: pickVendorName(vendor),
+                vendor,
               })
             }
           />
@@ -107,24 +134,28 @@ const BookServiceScreen = ({ navigation }) => {
   );
 };
 
+const StateText = ({ text }) => (
+  <AppText style={styles.stateText}>{text}</AppText>
+);
+
 const VendorCard = ({ onPress, vendor }) => (
   <GlassCard onPress={onPress} contentStyle={styles.vendorCard}>
-    <Image source={vendor.image} resizeMode="cover" style={styles.vendorImage} />
+    <Image source={imageSource()} resizeMode="cover" style={styles.vendorImage} />
     <View style={styles.vendorInfo}>
       <AppText numberOfLines={1} style={styles.vendorName}>
-        {vendor.name}
+        {pickVendorName(vendor)}
       </AppText>
       <LineBreak height={0.42} />
       <View style={styles.ratingRow}>
         <AppIcon name="star" color={AppColors.starYellow} size={14} />
-        <AppText style={styles.rating}>{vendor.rating}</AppText>
+        <AppText style={styles.rating}>{pickVendorRating(vendor)}</AppText>
         <AppText style={styles.dot}>•</AppText>
-        <AppText style={styles.reviews}>{vendor.reviews}</AppText>
+        <AppText style={styles.reviews}>{pickVendorReviews(vendor)} reviews</AppText>
       </View>
       <LineBreak height={0.85} />
       <View style={styles.badge}>
         <AppIcon name="workspace-premium" color={AppColors.memorialCard} size={12} />
-        <AppText style={styles.badgeText}>{vendor.badge}</AppText>
+        <AppText style={styles.badgeText}>{pickVendorBadge(vendor)}</AppText>
       </View>
     </View>
     <AppIcon iconSet="ion" name="chevron-forward" color={AppColors.white} size={22} />
@@ -143,6 +174,7 @@ const styles = StyleSheet.create({
   },
   searchBox: {
     alignItems: 'center',
+    backgroundColor: AppColors.memorialCard,
     borderColor: AppColors.homeBorder,
     borderRadius: 12,
     borderWidth: 1,
@@ -156,6 +188,12 @@ const styles = StyleSheet.create({
     fontSize: responsiveFontSize(1.45),
     marginLeft: responsiveWidth(2.9),
     padding: 0,
+  },
+  stateText: {
+    color: AppColors.homeTextMuted,
+    fontSize: responsiveFontSize(1.35),
+    marginBottom: responsiveHeight(1.72),
+    textAlign: 'center',
   },
   vendorCard: {
     alignItems: 'center',

@@ -25,9 +25,7 @@ const AppTextInput = ({
   style,
   ...textInputProps
 }) => (
-  <LinearGradient
-    colors={gradientColors}
-    style={[styles.inputWrap, style]}>
+  <LinearGradient colors={gradientColors} style={[styles.inputWrap, style]}>
     {iconName ? (
       <AppIcon
         iconSet={iconSet}
@@ -65,10 +63,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     width: '100%',
-    height: responsiveHeight(4.7),
+    height: responsiveHeight(5),
     borderWidth: 0.5,
-    borderColor: AppColors.border,
-    borderRadius: responsiveHeight(2.35),
+    borderColor: AppColors.inputBorder,
+    borderRadius: responsiveHeight(2.5),
     backgroundColor: 'transparent',
   },
   leftIcon: {

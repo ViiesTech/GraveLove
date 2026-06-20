@@ -7,6 +7,7 @@ import GlassCard from '../../../components/GlassCard';
 import LineBreak from '../../../components/LineBreak';
 import ScreenWrapper from '../../../components/ScreenWrapper';
 import { AppColors } from '../../../utils/AppColors';
+import { showToast } from '../../../utils/Toast';
 import {
   responsiveFontSize,
   responsiveHeight,
@@ -20,6 +21,7 @@ const VendorTaskDetailsScreen = ({ navigation, route }) => {
   const [status, setStatus] = useState(params.status || 'Pending');
   const [beforeSelected, setBeforeSelected] = useState(false);
   const [afterSelected, setAfterSelected] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [sentVisible, setSentVisible] = useState(false);
 
   const activeIndex = useMemo(() => {
@@ -27,16 +29,36 @@ const VendorTaskDetailsScreen = ({ navigation, route }) => {
     return index < 0 ? 0 : index;
   }, [status]);
 
-  const handlePrimary = () => {
+  const handlePrimary = async () => {
     if (status === 'Pending') {
+      setIsProcessing(true);
+      await new Promise(resolve => setTimeout(resolve, 1000));
       setStatus('In Progress');
+      setIsProcessing(false);
+      showToast('Task marked as In Progress');
       return;
     }
-    navigation.navigate('VendorCompletionProof', {
-      cemeteryName: params.title || 'Peaceful Gardens Cemetery',
-      graveLocation: params.subtitle || 'Plot 54, Section C',
-      serviceName: params.service || 'Grave Cleaning',
-    });
+
+    if (!beforeSelected || !afterSelected) {
+      showToast('Please upload both before and after photos');
+      return;
+    }
+
+    setIsProcessing(true);
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    setIsProcessing(false);
+    setStatus('Completed');
+    setSentVisible(true);
+  };
+
+  const handlePickImage = isBeforePhoto => {
+    if (isBeforePhoto) {
+      setBeforeSelected(true);
+    } else {
+      setAfterSelected(true);
+    }
+
+    showToast(`${isBeforePhoto ? 'Before' : 'After'} photo selected`);
   };
 
   return (
@@ -130,13 +152,13 @@ const VendorTaskDetailsScreen = ({ navigation, route }) => {
                   selected={beforeSelected}
                   title="Before Photo"
                   uploadedText="Uploaded"
-                  onPress={() => setBeforeSelected(true)}
+                  onPress={() => handlePickImage(true)}
                 />
                 <ProofBox
                   selected={afterSelected}
                   title="After Photo"
                   uploadedText="Uploaded"
-                  onPress={() => setAfterSelected(true)}
+                  onPress={() => handlePickImage(false)}
                 />
               </View>
               <LineBreak height={1.6} />
@@ -158,7 +180,12 @@ const VendorTaskDetailsScreen = ({ navigation, route }) => {
 
         {status !== 'Completed' ? (
           <View style={styles.bottomAction}>
-            <AppButton style={styles.primaryButton} onPress={handlePrimary}>
+            <AppButton
+              disabled={isProcessing}
+              isLoading={isProcessing}
+              style={styles.primaryButton}
+              onPress={handlePrimary}
+            >
               {status === 'Pending' ? 'Mark as In Progress' : 'Send Proof to Client'}
             </AppButton>
           </View>
@@ -171,13 +198,13 @@ const VendorTaskDetailsScreen = ({ navigation, route }) => {
             <AppText style={styles.modalTitle}>Sent</AppText>
             <LineBreak height={2.2} />
             <View style={styles.sentCircle}>
-              <AppIcon name="check" color={AppColors.themeColor} size={52} />
+              <AppIcon name="check" color={AppColors.white} size={52} />
             </View>
             <LineBreak height={2.2} />
             <AppText style={styles.valueText}>Successfully</AppText>
             <LineBreak height={2.8} />
             <AppButton
-              style={styles.primaryButton}
+              style={[styles.primaryButton, styles.modalButton]}
               onPress={() => {
                 setSentVisible(false);
                 navigation.goBack();
@@ -241,7 +268,7 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: responsiveWidth(4),
-    backgroundColor: 'rgba(4,47,103,0.5)',
+    backgroundColor: 'transparent',
   },
   backRow: {
     alignItems: 'center',
@@ -299,7 +326,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.24)',
   },
   stepBarActive: {
-    backgroundColor: AppColors.onboardingButton,
+    backgroundColor: AppColors.white,
   },
   stepBarLast: {
     marginRight: 0,
@@ -309,7 +336,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   stepLabel: {
-    color: AppColors.homeTextMuted,
+    color: AppColors.white,
     fontSize: responsiveFontSize(1.05),
   },
   sectionCard: {
@@ -322,7 +349,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   sectionTitle: {
-    color: AppColors.white,
+    color: '#4E6983',
     fontSize: responsiveFontSize(1.55),
     fontWeight: '700',
     marginLeft: responsiveWidth(2),
@@ -380,7 +407,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 0.5,
     borderColor: AppColors.homeBorder,
-    backgroundColor: AppColors.memorialCard,
+    backgroundColor: '#57799F',
   },
   proofTitle: {
     color: AppColors.white,
@@ -435,7 +462,7 @@ const styles = StyleSheet.create({
   modalCard: {
     alignItems: 'center',
     width: '100%',
-    backgroundColor: AppColors.memorialCard,
+    backgroundColor: AppColors.onboardingButton,
     borderColor: AppColors.homeBorder,
     padding: responsiveWidth(8),
   },
@@ -450,7 +477,11 @@ const styles = StyleSheet.create({
     width: responsiveWidth(24),
     height: responsiveWidth(24),
     borderRadius: responsiveWidth(12),
-    backgroundColor: AppColors.white,
+    backgroundColor: AppColors.memorialCard,
+  },
+  modalButton: {
+    width: '100%',
+    backgroundColor: AppColors.memorialCard,
   },
 });
 

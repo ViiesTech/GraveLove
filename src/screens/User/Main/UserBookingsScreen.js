@@ -7,6 +7,7 @@ import AppText from '../../../components/AppText';
 import GlassCard from '../../../components/GlassCard';
 import LineBreak from '../../../components/LineBreak';
 import ScreenWrapper from '../../../components/ScreenWrapper';
+import { useGetClientBookingsQuery } from '../../../redux/api/userApi';
 import { AppAssets } from '../../../utils/AppAssets';
 import { AppColors } from '../../../utils/AppColors';
 import {
@@ -15,26 +16,49 @@ import {
   responsiveWidth,
 } from '../../../utils/Responsive_Dimensions';
 
-const bookings = [
-  {
-    amount: '$60',
-    date: 'October 30, 2025 at 10:00 AM',
-    location: 'Peaceful Gardens Cemetery - Rose Section, Block B',
-    provider: 'Garden Care Services',
-    service: 'Fresh Flowers Placement',
-    status: 'Pending',
-  },
-  {
-    amount: '$80',
-    date: 'November 2, 2025 at 02:00 PM',
-    location: 'Forest Lawn Memorial Park, Section A',
-    provider: 'Wilson Care House',
-    service: 'Grave Cleaning',
-    status: 'In Progress',
-  },
-];
+const firstValue = (...values) =>
+  values.find(value => value !== undefined && value !== null && value !== '');
 
-const UserBookingsScreen = ({ navigation }) => (
+const mapBooking = item => ({
+    raw: item,
+    id: `${firstValue(item?.id, item?.booking_id, item?.service_name, 'booking')}`,
+    amount: firstValue(item?.amount, item?.total_amount, item?.price, '$0'),
+    date: firstValue(
+      item?.formatted_date,
+      item?.date_time,
+      item?.scheduled_at,
+      item?.booking_date,
+      item?.date,
+      'Date unavailable',
+    ),
+    location: firstValue(
+      item?.location,
+      item?.cemetery?.name,
+      item?.cemetery_name,
+      item?.memorial?.location,
+      'Location unavailable',
+    ),
+    provider: firstValue(
+      item?.vendor_name,
+      item?.vendor?.business_name,
+      item?.vendor?.name,
+      item?.provider,
+      'Vendor unavailable',
+    ),
+    service: firstValue(
+      item?.service_name,
+      item?.service?.name,
+      item?.title,
+      'Service Booking',
+    ),
+    status: firstValue(item?.status_label, item?.status, 'Pending'),
+});
+
+const UserBookingsScreen = ({ navigation }) => {
+  const { data: bookingsData = [], isLoading, isError, error } = useGetClientBookingsQuery();
+  const bookings = bookingsData.map(mapBooking);
+
+  return (
   <ScreenWrapper
     isScroll
     style={styles.screen}
@@ -46,19 +70,23 @@ const UserBookingsScreen = ({ navigation }) => (
       subtitle="Track and manage your service bookings"
     />
     <View style={styles.content}>
+      {isLoading ? <EmptyState text="Loading bookings..." /> : null}
+      {isError ? <EmptyState text={error?.message || 'Unable to load bookings.'} /> : null}
+      {!isLoading && !isError && !bookings.length ? <PlainEmptyState text="No bookings found." /> : null}
       {bookings.map(booking => (
         <BookingCard
-          key={`${booking.service}-${booking.date}`}
+          key={booking.id || `${booking.service}-${booking.date}`}
           booking={booking}
           onPress={() => navigation.navigate('ViewBookingDetails', {
-            booking,
+            booking: booking.raw || booking,
             isCompleted: booking.status !== 'In Progress',
           })}
         />
       ))}
     </View>
   </ScreenWrapper>
-);
+  );
+};
 
 const BookingCard = ({ booking, onPress }) => {
   const isProgress = booking.status === 'In Progress';
@@ -109,6 +137,18 @@ const BookingCard = ({ booking, onPress }) => {
   );
 };
 
+const EmptyState = ({ text }) => (
+  <GlassCard contentStyle={styles.emptyCard}>
+    <AppText style={styles.emptyText}>{text}</AppText>
+  </GlassCard>
+);
+
+const PlainEmptyState = ({ text }) => (
+  <View style={styles.plainEmptyWrap}>
+    <AppText style={styles.plainEmptyText}>{text}</AppText>
+  </View>
+);
+
 const DetailLine = ({ icon, text }) => (
   <View style={styles.detailLine}>
     <AppIcon name={icon} color={AppColors.homeTextMuted} size={16} />
@@ -120,6 +160,26 @@ const styles = StyleSheet.create({
   screen: { backgroundColor: AppColors.homeBody },
   scrollContent: { flexGrow: 1 },
   content: { padding: responsiveWidth(5.8) },
+  emptyCard: {
+    alignItems: 'center',
+    backgroundColor: AppColors.memorialCard,
+    borderColor: AppColors.homeBorder,
+  },
+  emptyText: {
+    color: AppColors.homeTextMuted,
+    fontSize: responsiveFontSize(1.35),
+    textAlign: 'center',
+  },
+  plainEmptyWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: responsiveHeight(42),
+  },
+  plainEmptyText: {
+    color: AppColors.homeTextMuted,
+    fontSize: responsiveFontSize(1.35),
+    textAlign: 'center',
+  },
   card: {
     backgroundColor: AppColors.memorialCard,
     borderColor: AppColors.homeBorder,

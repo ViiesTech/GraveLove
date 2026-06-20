@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Image,
   ImageBackground,
@@ -14,6 +14,10 @@ import AppText from '../../../components/AppText';
 import GlassCard from '../../../components/GlassCard';
 import LineBreak from '../../../components/LineBreak';
 import ScreenWrapper from '../../../components/ScreenWrapper';
+import {
+  useGetClientMemorialDetailQuery,
+  useGetClientMemorialTributesQuery,
+} from '../../../redux/api/userApi';
 import { AppAssets } from '../../../utils/AppAssets';
 import { AppColors } from '../../../utils/AppColors';
 import {
@@ -24,16 +28,67 @@ import {
 
 const defaultMemorial = {
   name: 'Robert James Thompson',
-  relation: 'Father',
+  relation: 'Loved One',
   dates: 'Jan 15, 1945 — Mar 20, 2020',
   image: AppAssets.images.profilePic,
 };
 
+const valueOf = (...values) => values.find(value => value !== undefined && value !== null && value !== '') || '';
+const imageSource = image => {
+  if (!image) {
+    return AppAssets.images.profilePic;
+  }
+  if (typeof image === 'number') {
+    return image;
+  }
+  return { uri: image };
+};
+const displayDate = value => value ? `${value}` : '-';
+const formatMemorialDates = memorial => valueOf(
+  memorial?.dates,
+  memorial?.date_range,
+  `${displayDate(valueOf(memorial?.date_of_birth, memorial?.birth_date))} - ${displayDate(valueOf(memorial?.date_of_passing, memorial?.death_date))}`,
+);
+const mapMemorial = (detail, initial = {}) => {
+  const raw = detail || {};
+  const merged = { ...initial, ...raw };
+  return {
+    ...merged,
+    id: valueOf(merged.id, merged.memorial_id),
+    name: valueOf(merged.name, merged.full_name, merged.memorial_name, defaultMemorial.name),
+    relation: valueOf(merged.relationship, merged.relation, merged.relation_to_user, defaultMemorial.relation),
+    dates: formatMemorialDates(merged),
+    image: imageSource(valueOf(merged.profile_picture_url, merged.profile_picture, merged.image, merged.photo)),
+    quote: valueOf(merged.subtitle, '"A loving father who dedicated his life to his family and community"'),
+    cemetery: valueOf(merged.cemetery_name, 'Forest Lawn Memorial Park'),
+    locationLine: valueOf(merged.address, merged.location, [merged.section, merged.plot_number, merged.grave_number].filter(Boolean).join(', '), 'Garden of Peace, Section A, Plot 142'),
+  };
+};
+const mapTribute = tribute => ({
+  id: valueOf(tribute?.id, tribute?.created_at, Math.random().toString()),
+  avatar: imageSource(valueOf(tribute?.user?.profile_picture, tribute?.author?.profile_picture, tribute?.avatar)),
+  content: valueOf(tribute?.body, tribute?.content, tribute?.message, ''),
+  likes: valueOf(tribute?.hearts_count, tribute?.likes_count, tribute?.reactions_count, 0),
+  name: valueOf(tribute?.author_name, tribute?.user?.name, tribute?.author?.name, tribute?.name, 'Family Member'),
+  time: valueOf(tribute?.created_at_human, tribute?.time_ago, tribute?.created_at, ''),
+});
+
+const staticPhotos = [AppAssets.images.vendor1, AppAssets.images.vendor1, AppAssets.images.vendor1];
+const staticServices = [
+  { date: 'Oct 30, 2025', iconName: 'local-florist', title: 'Flower Placement' },
+  { date: 'Oct 15, 2025', iconName: 'calendar-today', title: 'Grave Cleaning' },
+];
+
 const MemorialProfileScreen = ({ navigation, route }) => {
-  const memorial = route?.params?.memorial ?? defaultMemorial;
+  const initialMemorial = route?.params?.memorial ?? defaultMemorial;
+  const memorialId = valueOf(initialMemorial.id, initialMemorial.memorial_id);
   const [selectedTab, setSelectedTab] = useState(0);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const insets = useSafeAreaInsets();
+  const { data: detailData, isLoading: isDetailLoading } = useGetClientMemorialDetailQuery(memorialId, { skip: !memorialId });
+  const { data: tributesData = [], isLoading: isTributesLoading } = useGetClientMemorialTributesQuery(memorialId, { skip: !memorialId });
+  const memorial = useMemo(() => mapMemorial(detailData, initialMemorial), [detailData, initialMemorial]);
+  const tributes = useMemo(() => tributesData.map(mapTribute), [tributesData]);
 
   return (
     <ScreenWrapper safeAreaEdges={[]} style={styles.screen}>
@@ -47,82 +102,67 @@ const MemorialProfileScreen = ({ navigation, route }) => {
         <ScrollView bounces showsVerticalScrollIndicator={false}>
           <View style={styles.content}>
             <View style={styles.avatarBlock}>
-              <Image
-                source={memorial.image}
-                resizeMode="cover"
-                style={styles.avatar}
-              />
+              <Image source={memorial.image} resizeMode="cover" style={styles.avatar} />
               <View style={styles.relationPill}>
-                <AppText style={styles.relationText}>
-                  {memorial.relation || 'Loved One'}
-                </AppText>
+                <AppText style={styles.relationText}>{memorial.relation}</AppText>
               </View>
             </View>
             <LineBreak height={0.85} />
-            <AppText style={styles.name}>
-              {memorial.name || defaultMemorial.name}
-            </AppText>
+            <AppText style={styles.name}>{memorial.name}</AppText>
             <LineBreak height={0.85} />
-            <AppText style={styles.dates}>
-              {memorial.dates || defaultMemorial.dates}
-            </AppText>
+            <AppText style={styles.dates}>{memorial.dates}</AppText>
             <LineBreak height={1.29} />
-            <AppText style={styles.quote}>
-              "A loving father who dedicated his life to his family and
-              community"
-            </AppText>
+            <AppText style={styles.quote}>"{memorial.quote}"</AppText>
+            {isDetailLoading ? <AppText style={styles.dates}>Loading latest details...</AppText> : null}
             <LineBreak height={2.58} />
             <StatsRow />
             <LineBreak height={2.58} />
-            <ActionButtons navigation={navigation} />
+            <ActionButtons memorial={memorial} memorialId={memorialId} navigation={navigation} />
             <LineBreak height={2.58} />
-            <LocationCard navigation={navigation} />
+            <LocationCard memorial={memorial} navigation={navigation} />
           </View>
 
           <View style={styles.stickyTabWrap}>
             <TabSelector selectedTab={selectedTab} onSelect={setSelectedTab} />
           </View>
           <View style={styles.tabContent}>
-            {selectedTab === 0 ? <TributesTab navigation={navigation} /> : null}
-            {selectedTab === 1 ? <PhotosTab navigation={navigation} /> : null}
-            {selectedTab === 2 ? <InfoTab navigation={navigation} /> : null}
+            {selectedTab === 0 ? (
+              <TributesTab
+                isLoading={isTributesLoading}
+                memorial={memorial}
+                memorialId={memorialId}
+                navigation={navigation}
+                tributes={tributes}
+              />
+            ) : null}
+            {selectedTab === 1 ? (
+              <PhotosTab
+                memorialId={memorialId}
+                navigation={navigation}
+              />
+            ) : null}
+            {selectedTab === 2 ? (
+              <InfoTab
+                navigation={navigation}
+              />
+            ) : null}
           </View>
         </ScrollView>
 
-        <ShareModal
-          visible={isShareOpen}
-          onClose={() => setIsShareOpen(false)}
-        />
+        <ShareModal visible={isShareOpen} onClose={() => setIsShareOpen(false)} />
       </View>
     </ScreenWrapper>
   );
 };
 
 const ProfileHeader = ({ onBack, onShare, topOffset }) => (
-  <ImageBackground
-    source={AppAssets.images.userDashboardFront}
-    resizeMode="cover"
-    style={[styles.header, { marginTop: topOffset }]}
-  >
+  <ImageBackground source={AppAssets.images.vendor3} resizeMode="cover" style={[styles.header, { marginTop: topOffset }]}> 
     <View style={styles.headerOverlay} />
     <View style={styles.headerActions}>
-      <TouchableOpacity
-        activeOpacity={0.75}
-        onPress={onBack}
-        style={styles.headerIcon}
-      >
-        <AppIcon
-          iconSet="ion"
-          name="chevron-back"
-          color={AppColors.white}
-          size={22}
-        />
+      <TouchableOpacity activeOpacity={0.75} onPress={onBack} style={styles.headerIcon}>
+        <AppIcon iconSet="ion" name="chevron-back" color={AppColors.white} size={22} />
       </TouchableOpacity>
-      <TouchableOpacity
-        activeOpacity={0.75}
-        onPress={onShare}
-        style={styles.shareIcon}
-      >
+      <TouchableOpacity activeOpacity={0.75} onPress={onShare} style={styles.shareIcon}>
         <AppIcon name="share" color={AppColors.black} size={20} />
       </TouchableOpacity>
     </View>
@@ -145,48 +185,29 @@ const StatCard = ({ count, label }) => (
   </GlassCard>
 );
 
-const ActionButtons = ({ navigation }) => (
+const ActionButtons = ({ memorial, memorialId, navigation }) => (
   <View style={styles.actionRow}>
-    <TouchableOpacity
-      activeOpacity={0.82}
-      onPress={() => navigation.navigate('BookService')}
-      style={styles.bookBtn}
-    >
+    <TouchableOpacity activeOpacity={0.82} onPress={() => navigation.navigate('BookService')} style={styles.bookBtn}>
       <AppIcon name="account-tree" color={AppColors.white} size={18} />
       <AppText style={styles.bookBtnText}>Book Service</AppText>
     </TouchableOpacity>
-    <TouchableOpacity
-      activeOpacity={0.82}
-      onPress={() => navigation.navigate('MemorialWall')}
-      style={styles.wallBtn}
-    >
-      <AppIcon
-        iconSet="ion"
-        name="heart-outline"
-        color={AppColors.white}
-        size={18}
-      />
+    <TouchableOpacity activeOpacity={0.82} onPress={() => navigation.navigate('MemorialWall', { memorial, memorialId })} style={styles.wallBtn}>
+      <AppIcon iconSet="ion" name="heart-outline" color={AppColors.white} size={18} />
       <AppText style={styles.wallBtnText}>Memorial Wall</AppText>
     </TouchableOpacity>
   </View>
 );
 
-const LocationCard = ({ navigation }) => (
+const LocationCard = ({ memorial, navigation }) => (
   <GlassCard contentStyle={styles.locationCard}>
     <View style={styles.locationIcon}>
       <AppIcon name="location-on" color={AppColors.memorialCard} size={20} />
     </View>
     <View style={styles.locationCopy}>
-      <AppText style={styles.locationTitle}>Forest Lawn Memorial Park</AppText>
-      <AppText style={styles.locationSubtitle}>
-        Garden of Peace, Section A, Plot 142
-      </AppText>
+      <AppText style={styles.locationTitle}>{memorial.cemetery}</AppText>
+      <AppText style={styles.locationSubtitle}>{memorial.locationLine || 'Location details not added'}</AppText>
     </View>
-    <TouchableOpacity
-      activeOpacity={0.82}
-      onPress={() => navigation.navigate('MapSelection')}
-      style={styles.directionsBtn}
-    >
+    <TouchableOpacity activeOpacity={0.82} onPress={() => navigation.navigate('MapSelection')} style={styles.directionsBtn}>
       <AppText style={styles.directionsText}>Directions</AppText>
     </TouchableOpacity>
   </GlassCard>
@@ -199,17 +220,8 @@ const TabSelector = ({ onSelect, selectedTab }) => {
       {tabs.map((tab, index) => {
         const isSelected = selectedTab === index;
         return (
-          <TouchableOpacity
-            key={tab}
-            activeOpacity={0.82}
-            onPress={() => onSelect(index)}
-            style={[styles.tabItem, isSelected && styles.tabItemActive]}
-          >
-            <AppText
-              style={[styles.tabText, isSelected && styles.tabTextActive]}
-            >
-              {tab}
-            </AppText>
+          <TouchableOpacity key={tab} activeOpacity={0.82} onPress={() => onSelect(index)} style={[styles.tabItem, isSelected && styles.tabItemActive]}>
+            <AppText style={[styles.tabText, isSelected && styles.tabTextActive]}>{tab}</AppText>
           </TouchableOpacity>
         );
       })}
@@ -217,52 +229,36 @@ const TabSelector = ({ onSelect, selectedTab }) => {
   );
 };
 
-const TributesTab = ({ navigation }) => (
+const TributesTab = ({ isLoading, memorial, memorialId, navigation, tributes }) => (
   <View>
     <GlassCard contentStyle={styles.bioCard}>
-      <AppText style={styles.bioText}>
-        Robert James Thompson was a devoted father, husband, and community
-        leader. He spent 35 years teaching mathematics at Lincoln High...
-      </AppText>
+      <AppText style={styles.bioText}>Robert James Thompson was a devoted father, husband, and community leader. He spent 35 years teaching mathematics at Lincoln High...</AppText>
       <LineBreak height={1.72} />
       <AppText style={styles.readBio}>Read full biography →</AppText>
     </GlassCard>
     <LineBreak height={2.58} />
-    <TributeCard
-      avatar={AppAssets.images.profilePic}
-      content="Missing you every day, Grandma. Your wisdom guides me still."
-      likes={12}
-      name="Sarah Johnson"
-      time="2 days ago"
-    />
-    <LineBreak height={1.72} />
-    <TributeCard
-      avatar={AppAssets.images.vendor1}
-      content="Your beautiful garden lives on. We planted roses in your honor today."
-      likes={18}
-      name="Michael Chen"
-      time="1 week ago"
-    />
-    <LineBreak height={2.58} />
+    {isLoading ? <EmptyText text="Loading tributes..." /> : null}
+    {!isLoading && !tributes.length ? <EmptyText text="No tributes yet. Be the first to share one." /> : null}
+    {tributes.map(tribute => (
+      <View key={tribute.id}>
+        <TributeCard {...tribute} />
+        <LineBreak height={1.72} />
+      </View>
+    ))}
+    <LineBreak height={0.86} />
     <View style={styles.tributeButtons}>
-      <TouchableOpacity
-        activeOpacity={0.82}
-        onPress={() => navigation.navigate('MemorialWall')}
-        style={styles.outlineAction}
-      >
+      <TouchableOpacity activeOpacity={0.82} onPress={() => navigation.navigate('MemorialWall', { memorial, memorialId })} style={styles.outlineAction}>
         <AppText style={styles.outlineActionText}>View All Tributes</AppText>
       </TouchableOpacity>
-      <TouchableOpacity
-        activeOpacity={0.82}
-        onPress={() => navigation.navigate('AddTribute')}
-        style={styles.filledAction}
-      >
+      <TouchableOpacity activeOpacity={0.82} onPress={() => navigation.navigate('AddTribute', { memorialId })} style={styles.filledAction}>
         <AppIcon iconSet="ion" name="heart" color={AppColors.white} size={18} />
         <AppText style={styles.filledActionText}>Add Tribute</AppText>
       </TouchableOpacity>
     </View>
   </View>
 );
+
+const EmptyText = ({ text }) => <AppText style={styles.heartsText}>{text}</AppText>;
 
 const TributeCard = ({ avatar, content, likes, name, time }) => (
   <View style={styles.tributeCard}>
@@ -285,7 +281,7 @@ const TributeCard = ({ avatar, content, likes, name, time }) => (
   </View>
 );
 
-const PhotosTab = ({ navigation }) => (
+const PhotosTab = ({ memorialId, navigation }) => (
   <View>
     <View style={styles.photosRow}>
       <TouchableOpacity activeOpacity={0.82} style={styles.addPhotoCard}>
@@ -293,26 +289,13 @@ const PhotosTab = ({ navigation }) => (
         <LineBreak height={0.85} />
         <AppText style={styles.addPhotoText}>Add Photo</AppText>
       </TouchableOpacity>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={styles.photosList}
-      >
-        {[
-          AppAssets.images.vendor1,
-          AppAssets.images.vendor1,
-          AppAssets.images.vendor1,
-        ].map((image, index) => (
-          <Image key={index} source={image} style={styles.photoItem} />
-        ))}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.photosList}>
+        {staticPhotos.map((image, index) => <Image key={index} source={image} style={styles.photoItem} />)}
       </ScrollView>
     </View>
+    <LineBreak height={1.4} />
     <LineBreak height={2.58} />
-    <TouchableOpacity
-      activeOpacity={0.82}
-      onPress={() => navigation.navigate('ViewMemorialPhotos')}
-      style={styles.fullButton}
-    >
+    <TouchableOpacity activeOpacity={0.82} onPress={() => navigation.navigate('ViewMemorialPhotos', { memorialId })} style={styles.fullButton}>
       <AppText style={styles.fullButtonText}>View All 89 Photos</AppText>
     </TouchableOpacity>
   </View>
@@ -328,23 +311,13 @@ const InfoTab = ({ navigation }) => (
     </InfoCard>
     <LineBreak height={2.58} />
     <InfoCard title="Recent Services">
-      <ServiceLine
-        date="Oct 30, 2025"
-        iconName="local-florist"
-        title="Flower Placement"
-      />
-      <LineBreak height={1.72} />
-      <ServiceLine
-        date="Oct 15, 2025"
-        iconName="calendar-today"
-        title="Grave Cleaning"
-      />
-      <LineBreak height={2.58} />
-      <TouchableOpacity
-        activeOpacity={0.82}
-        onPress={() => navigation.navigate('ViewMemorialServiceInfo')}
-        style={styles.fullButton}
-      >
+      {staticServices.map(service => (
+        <View key={service.title}>
+          <ServiceLine date={service.date} iconName={service.iconName} title={service.title} />
+          <LineBreak height={1.72} />
+        </View>
+      ))}
+      <TouchableOpacity activeOpacity={0.82} onPress={() => navigation.navigate('ViewMemorialServiceInfo')} style={styles.fullButton}>
         <AppText style={styles.fullButtonText}>View All Services</AppText>
       </TouchableOpacity>
     </InfoCard>
@@ -369,11 +342,7 @@ const DetailLine = ({ label, value }) => (
 const ServiceLine = ({ date, iconName, title }) => (
   <View style={styles.serviceLine}>
     <View style={styles.serviceIconWrap}>
-      <AppIcon
-        name={iconName}
-        color={AppColors.white}
-        size={responsiveWidth(5.8)}
-      />
+      <AppIcon name={iconName} color={AppColors.white} size={responsiveWidth(5.8)} />
     </View>
     <View style={styles.serviceCopy}>
       <AppText style={styles.serviceTitle}>{title}</AppText>
@@ -386,53 +355,28 @@ const ServiceLine = ({ date, iconName, title }) => (
 );
 
 const ShareModal = ({ onClose, visible }) => (
-  <Modal
-    transparent
-    animationType="fade"
-    visible={visible}
-    onRequestClose={onClose}
-  >
+  <Modal transparent animationType="fade" visible={visible} onRequestClose={onClose}>
     <View style={styles.modalBackdrop}>
       <View style={styles.modalSheet}>
         <View style={styles.modalTop}>
           <AppText style={styles.modalTitle}>Share via:</AppText>
-          <TouchableOpacity
-            activeOpacity={0.75}
-            onPress={onClose}
-            style={styles.modalClose}
-          >
+          <TouchableOpacity activeOpacity={0.75} onPress={onClose} style={styles.modalClose}>
             <AppIcon name="close" color={AppColors.white} size={24} />
           </TouchableOpacity>
         </View>
         <LineBreak height={2.15} />
         <View style={styles.shareButtons}>
-          <ShareButton
-            iconSet="ion"
-            icon="logo-whatsapp"
-            label="WhatsApp"
-            onPress={onClose}
-          />
-          <ShareButton
-            iconSet="ion"
-            icon="mail-outline"
-            label="Email"
-            onPress={onClose}
-          />
+          <ShareButton iconSet="ion" icon="logo-whatsapp" label="WhatsApp" onPress={onClose} />
+          <ShareButton iconSet="ion" icon="mail-outline" label="Email" onPress={onClose} />
         </View>
         <LineBreak height={2.58} />
         <AppText style={styles.modalTitle}>Or copy link:</AppText>
         <LineBreak height={1.29} />
         <View style={styles.copyRow}>
           <View style={styles.copyInput}>
-            <AppText numberOfLines={1} style={styles.copyLink}>
-              https://memorialcare.app/post/1...
-            </AppText>
+            <AppText numberOfLines={1} style={styles.copyLink}>https://memorialcare.app/post/1...</AppText>
           </View>
-          <TouchableOpacity
-            activeOpacity={0.82}
-            onPress={onClose}
-            style={styles.copyBtn}
-          >
+          <TouchableOpacity activeOpacity={0.82} onPress={onClose} style={styles.copyBtn}>
             <AppIcon name="content-copy" color={AppColors.white} size={16} />
             <AppText style={styles.copyText}>Copy</AppText>
           </TouchableOpacity>
@@ -443,11 +387,7 @@ const ShareModal = ({ onClose, visible }) => (
 );
 
 const ShareButton = ({ icon, iconSet, label, onPress }) => (
-  <TouchableOpacity
-    activeOpacity={0.82}
-    onPress={onPress}
-    style={styles.shareBtn}
-  >
+  <TouchableOpacity activeOpacity={0.82} onPress={onPress} style={styles.shareBtn}>
     <AppIcon iconSet={iconSet} name={icon} color={AppColors.white} size={28} />
     <LineBreak height={0.85} />
     <AppText style={styles.shareBtnText}>{label}</AppText>
@@ -584,7 +524,7 @@ const styles = StyleSheet.create({
   },
   wallBtn: {
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#76A1C8',
     borderColor: AppColors.homeBorder,
     borderRadius: 30,
     borderWidth: 1,

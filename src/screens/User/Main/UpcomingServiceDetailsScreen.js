@@ -6,6 +6,7 @@ import AppText from '../../../components/AppText';
 import GlassCard from '../../../components/GlassCard';
 import LineBreak from '../../../components/LineBreak';
 import ScreenWrapper from '../../../components/ScreenWrapper';
+import { useGetClientBookingDetailQuery } from '../../../redux/api/userApi';
 import { AppAssets } from '../../../utils/AppAssets';
 import { AppColors } from '../../../utils/AppColors';
 import {
@@ -22,8 +23,62 @@ const defaultBooking = {
   service: 'Fresh Flowers Placement',
 };
 
+const firstValue = (...values) =>
+  values.find(value => value !== undefined && value !== null && value !== '');
+
+const pickService = booking =>
+  firstValue(
+    booking?.service,
+    booking?.service_name,
+    booking?.vendor_service?.name,
+    booking?.vendor_service?.service_name,
+    booking?.title,
+    'Fresh Flowers Placement',
+  );
+
+const pickProvider = booking =>
+  firstValue(
+    booking?.provider,
+    booking?.vendor_name,
+    booking?.vendor?.vendor_business?.business_name,
+    booking?.vendor?.business_name,
+    booking?.vendor?.name,
+    'Garden Care Services',
+  );
+
+const pickAmount = booking =>
+  firstValue(booking?.amount, booking?.total_amount, booking?.price, '$60.00');
+
+const pickDate = booking =>
+  firstValue(
+    booking?.date,
+    booking?.formatted_date,
+    booking?.date_time,
+    booking?.scheduled_at,
+    booking?.scheduled_date,
+    'October 30, 2025 at 10:00 AM',
+  );
+
+const pickLocation = booking =>
+  firstValue(
+    booking?.location,
+    booking?.cemetery_name,
+    booking?.memorial?.address,
+    booking?.memorial?.cemetery_name,
+    'Peaceful Gardens Cemetery - Rose Section, Block B',
+  );
+
+const pickCustomer = booking =>
+  firstValue(booking?.customer_name, booking?.client?.name, booking?.user?.name, 'Michael Chen');
+
+const pickMemorial = booking =>
+  firstValue(booking?.memorial_name, booking?.memorial?.name, 'Elizabeth Chen (Mother)');
+
 const UpcomingServiceDetailsScreen = ({ navigation, route }) => {
-  const booking = route?.params?.booking ?? defaultBooking;
+  const routeBooking = route?.params?.booking ?? defaultBooking;
+  const bookingId = firstValue(route?.params?.bookingId, routeBooking?.id, routeBooking?.booking_id);
+  const { data: bookingDetail } = useGetClientBookingDetailQuery(bookingId, { skip: !bookingId });
+  const booking = bookingDetail || routeBooking;
 
   return (
     <ScreenWrapper
@@ -43,38 +98,38 @@ const UpcomingServiceDetailsScreen = ({ navigation, route }) => {
               <AppIcon name="local-florist" color={AppColors.memorialCard} size={28} />
             </View>
             <View style={styles.titleCopy}>
-              <AppText style={styles.title}>{booking.service}</AppText>
+              <AppText style={styles.title}>{pickService(booking)}</AppText>
               <View style={styles.providerRow}>
-                <AppText style={styles.muted}>{booking.provider}</AppText>
+                <AppText style={styles.muted}>{pickProvider(booking)}</AppText>
                 <AppIcon name="star" color={AppColors.starYellow} size={12} />
-                <AppText style={styles.rating}>4.9</AppText>
+                <AppText style={styles.rating}>{firstValue(booking?.rating, booking?.vendor?.rating, '4.9')}</AppText>
               </View>
             </View>
             <View style={styles.priceWrap}>
               <View style={styles.status}>
                 <AppText style={styles.statusText}>Scheduled</AppText>
               </View>
-              <AppText style={styles.price}>{booking.amount}</AppText>
+              <AppText style={styles.price}>{pickAmount(booking)}</AppText>
             </View>
           </View>
           <LineBreak height={3.43} />
-          <InfoRow label="Customer" value="Michael Chen" />
+          <InfoRow label="Customer" value={pickCustomer(booking)} />
           <LineBreak height={1.29} />
           <View style={styles.memorialPill}>
-            <AppText style={styles.memorialText}>Elizabeth Chen (Mother)</AppText>
+            <AppText style={styles.memorialText}>{pickMemorial(booking)}</AppText>
           </View>
           <LineBreak height={2.58} />
-          <DetailLine icon="location-on" text={booking.location} />
+          <DetailLine icon="location-on" text={pickLocation(booking)} />
           <LineBreak height={1.72} />
-          <DetailLine icon="calendar-today" text={booking.date} />
+          <DetailLine icon="calendar-today" text={pickDate(booking)} />
           <LineBreak height={1.72} />
           <AppText style={styles.note}>
-            Fresh white roses placed at Forest Lawn. The memorial looks beautiful.
+            {firstValue(booking?.instructions, booking?.notes, 'Fresh white roses placed at Forest Lawn. The memorial looks beautiful.')}
           </AppText>
           <LineBreak height={2.58} />
           <View style={styles.summaryBox}>
             <AppText style={styles.summaryText}>
-              Service Summary: Placed fresh rose bouquet arrangement. Removed old wilted flowers. Cleaned vase and surrounding area.
+              {firstValue(booking?.summary, booking?.service_summary, 'Service Summary: Placed fresh rose bouquet arrangement. Removed old wilted flowers. Cleaned vase and surrounding area.')}
             </AppText>
           </View>
         </GlassCard>

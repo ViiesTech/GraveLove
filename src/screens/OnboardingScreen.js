@@ -23,18 +23,26 @@ import {
 const onboardingItems = [
   {
     image: AppAssets.images.onboard1,
+    title: 'Caring Beyond Time',
+    subTitle: 'Honor memories, simplify care',
     text: 'A compassionate platform to help you maintain and cherish the resting places of loved ones with dignity and ease.',
   },
   {
     image: AppAssets.images.onboard2,
+    title: 'Trusted Memorial Services',
+    subTitle: 'Book in minutes',
     text: 'Connect with verified vendors for grave cleaning, flower placement, and ongoing memorial care - all from your phone.',
   },
   {
     image: AppAssets.images.onboard3,
+    title: 'Stay Connected',
+    subTitle: 'Share and remember together',
     text: 'Create a beautiful memorial wall where family and friends can share memories, photos, and tributes in a peaceful digital space.',
   },
   {
     image: AppAssets.images.onboard4,
+    title: 'Peace of Mind',
+    subTitle: 'Automated care and reminders',
     text: 'Set up recurring services, track visits, and receive gentle reminders - ensuring your loved ones are always honored.',
   },
 ];
@@ -120,8 +128,9 @@ const OnboardingScreen = ({ navigation }) => {
             />
           </View>
 
-          <LineBreak height={6.9} />
           <View style={styles.textFrame}>
+            <AppText style={styles.title}>{currentItem.title}</AppText>
+            <AppText style={styles.subTitle}>{currentItem.subTitle}</AppText>
             <AppText style={styles.description}>{currentItem.text}</AppText>
           </View>
         </Animated.View>
@@ -175,9 +184,6 @@ const styles = StyleSheet.create({
   imageFrame: {
     width: '100%',
     height: responsiveHeight(24.6),
-    borderWidth: 1,
-    borderColor: AppColors.border,
-    overflow: 'hidden',
   },
   image: {
     width: '100%',
@@ -187,10 +193,24 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: responsiveHeight(22.1),
   },
+  title: {
+    color: AppColors.gold,
+    fontSize: responsiveFontSize(2.5),
+    lineHeight: responsiveHeight(3.15),
+    textAlign: 'center',
+  },
+  subTitle: {
+    color: AppColors.subTitle,
+    marginTop: responsiveHeight(1),
+    fontSize: responsiveFontSize(1.8),
+    lineHeight: responsiveHeight(3.15),
+    textAlign: 'center',
+  },
   description: {
     color: AppColors.gold,
     fontSize: responsiveFontSize(1.75),
-    lineHeight: responsiveHeight(3.15),
+    lineHeight: responsiveHeight(2.5),
+    marginTop: responsiveHeight(2),
     textAlign: 'center',
   },
   footer: {

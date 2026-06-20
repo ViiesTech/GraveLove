@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import AppButton from '../../../components/AppButton';
 import AppIcon from '../../../components/AppIcon';
 import AppText from '../../../components/AppText';
 import AppTextInput from '../../../components/AppTextInput';
@@ -7,64 +8,99 @@ import GlassCard from '../../../components/GlassCard';
 import LineBreak from '../../../components/LineBreak';
 import ScreenWrapper from '../../../components/ScreenWrapper';
 import { AppColors } from '../../../utils/AppColors';
+import { showToast } from '../../../utils/Toast';
 import {
   responsiveFontSize,
   responsiveHeight,
   responsiveWidth,
 } from '../../../utils/Responsive_Dimensions';
 
-const BookingServiceStep2 = ({ navigation }) => (
-  <ScreenWrapper
-    isScroll
-    style={styles.screen}
-    contentContainerStyle={styles.scrollContent}>
-    <View style={styles.header}>
-      <TouchableOpacity
-        activeOpacity={0.75}
-        onPress={() => navigation.goBack()}
-        style={styles.backBtn}>
-        <AppIcon iconSet="ion" name="chevron-back" color={AppColors.white} size={22} />
-      </TouchableOpacity>
-    </View>
+const BookingServiceStep2 = ({ navigation, route }) => {
+  const bookingDraft = route?.params?.bookingDraft || {};
+  const memorial = bookingDraft.memorial || {};
+  const [cemeteryName, setCemeteryName] = useState(
+    memorial.cemetery_name || memorial.address || bookingDraft.cemeteryName || '',
+  );
+  const [graveNumber, setGraveNumber] = useState(
+    memorial.grave_number || memorial.plot_number || bookingDraft.graveNumber || '',
+  );
 
-    <View style={styles.spacer} />
+  const continueNext = () => {
+    if (!cemeteryName.trim() || !graveNumber.trim()) {
+      showToast('Location missing', 'Please add cemetery and grave number.');
+      return;
+    }
 
-    <View style={styles.content}>
-      <GlassCard contentStyle={styles.formCard}>
-        <AppText style={styles.cardTitle}>Location Details</AppText>
-        <LineBreak height={2.58} />
-        <Field label="Cemetery Name" placeholder="e.g., Forest Lawn..." />
-        <LineBreak height={1.72} />
-        <Field label="Grave Number" placeholder="e.g., Plot C, Grave #45" />
-        <LineBreak height={2.58} />
-        <AppText style={styles.label}>Location</AppText>
-        <LineBreak height={0.85} />
+    navigation.navigate('BookingServiceStep3', {
+      bookingDraft: {
+        ...bookingDraft,
+        cemeteryName: cemeteryName.trim(),
+        graveNumber: graveNumber.trim(),
+      },
+    });
+  };
+
+  return (
+    <ScreenWrapper
+      isScroll
+      style={styles.screen}
+      contentContainerStyle={styles.scrollContent}>
+      <View style={styles.header}>
         <TouchableOpacity
-          activeOpacity={0.82}
-          onPress={() => navigation.navigate('MapSelection')}
-          style={styles.mapButton}>
-          <AppIcon name="location-on" color={AppColors.memorialCard} size={20} />
-          <AppText style={styles.mapButtonText}>Select from Map</AppText>
+          activeOpacity={0.75}
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}>
+          <AppIcon iconSet="ion" name="chevron-back" color={AppColors.white} size={22} />
         </TouchableOpacity>
-      </GlassCard>
-    </View>
+      </View>
 
-    <View style={styles.footer}>
-      <TouchableOpacity
-        activeOpacity={0.82}
-        onPress={() => navigation.navigate('BookingServiceStep3')}
-        style={styles.continueButton}>
-        <AppText style={styles.continueText}>Continue</AppText>
-      </TouchableOpacity>
-    </View>
-  </ScreenWrapper>
-);
+      <View style={styles.spacer} />
 
-const Field = ({ label, placeholder }) => (
+      <View style={styles.content}>
+        <GlassCard contentStyle={styles.formCard}>
+          <AppText style={styles.cardTitle}>Location Details</AppText>
+          <LineBreak height={2.58} />
+          <Field
+            label="Cemetery Name"
+            onChangeText={setCemeteryName}
+            placeholder="e.g., Forest Lawn..."
+            value={cemeteryName}
+          />
+          <LineBreak height={1.72} />
+          <Field
+            label="Grave Number"
+            onChangeText={setGraveNumber}
+            placeholder="e.g., Plot C, Grave #45"
+            value={graveNumber}
+          />
+          <LineBreak height={2.58} />
+          <AppText style={styles.label}>Location</AppText>
+          <LineBreak height={0.85} />
+          <TouchableOpacity
+            activeOpacity={0.82}
+            onPress={() => navigation.navigate('MapSelection', { bookingDraft })}
+            style={styles.mapButton}>
+            <AppIcon name="location-on" color={AppColors.memorialCard} size={20} />
+            <AppText style={styles.mapButtonText}>Select from Map</AppText>
+          </TouchableOpacity>
+        </GlassCard>
+      </View>
+
+      <View style={styles.footer}>
+        <AppButton style={styles.continueButton} onPress={continueNext}>
+          Continue
+        </AppButton>
+      </View>
+    </ScreenWrapper>
+  );
+};
+
+const Field = ({ label, placeholder, ...props }) => (
   <View>
     <AppText style={styles.label}>{label}</AppText>
     <LineBreak height={0.85} />
     <AppTextInput
+      {...props}
       placeholder={placeholder}
       style={styles.input}
       inputStyle={styles.inputText}
@@ -144,14 +180,7 @@ const styles = StyleSheet.create({
     padding: responsiveWidth(5.8),
   },
   continueButton: {
-    alignItems: 'center',
     backgroundColor: AppColors.homeActionCard,
-    borderRadius: 30,
-    paddingVertical: responsiveHeight(1.35),
-  },
-  continueText: {
-    color: AppColors.black,
-    fontSize: responsiveFontSize(1.12),
   },
 });
 

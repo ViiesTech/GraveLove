@@ -10,6 +10,7 @@ import ScreenWrapper from '../components/ScreenWrapper';
 import { AppAssets } from '../utils/AppAssets';
 import { AppColors } from '../utils/AppColors';
 import { showToast } from '../utils/Toast';
+import { useRegisterUserMutation } from '../redux/api/authApi';
 import {
   responsiveFontSize,
   responsiveHeight,
@@ -22,20 +23,24 @@ const UserSignupScreen = ({ navigation }) => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
-  const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isConfirmPasswordVisible, setIsConfirmPasswordVisible] =
+    useState(false);
+  const [registerUser, { isLoading }] = useRegisterUserMutation();
 
-  const navigateMain = routeName => {
+  const navigateMain = () => {
     let rootNavigation = navigation;
 
     while (rootNavigation.getParent?.()) {
       rootNavigation = rootNavigation.getParent();
     }
 
-    rootNavigation.navigate('MainStack', { screen: routeName });
+    rootNavigation.reset({
+      index: 0,
+      routes: [{ name: 'MainStack' }],
+    });
   };
 
-  const handleSignup = () => {
+  const handleSignup = async () => {
     if (!fullName.trim() || !email.trim() || !password || !confirmPassword) {
       showToast('Missing details', 'Please fill all required fields.');
       return;
@@ -51,12 +56,34 @@ const UserSignupScreen = ({ navigation }) => {
       return;
     }
 
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      showToast('Account created', 'Welcome to Grave Love.');
-      navigateMain('UserMain');
-    }, 700);
+    try {
+      const response = await registerUser({
+        full_name: fullName.trim(),
+        email: email.trim(),
+        password,
+        password_confirmation: confirmPassword,
+      }).unwrap();
+
+      const responseData = response?.data || response || {};
+      const userId = responseData?.user_id || responseData?.id;
+      const message = responseData?.message || response?.message || 'Account created.';
+
+      showToast('Account created', message);
+
+      if (userId) {
+        navigation.navigate('EmailConfirmation', {
+          email: email.trim(),
+          role: 'user',
+          userId,
+          userType: 2,
+        });
+        return;
+      }
+
+      navigateMain();
+    } catch (error) {
+      showToast('Signup failed', error?.message || 'Unable to create account.');
+    }
   };
 
   return (
@@ -64,7 +91,8 @@ const UserSignupScreen = ({ navigation }) => {
       isGradient
       isKeyboardAvoiding
       isScroll
-      contentContainerStyle={styles.container}>
+      contentContainerStyle={styles.container}
+    >
       <AuthHeader title="Join Memorial Care" subtitle="Create Account" />
 
       <LineBreak height={3.9} />
@@ -114,7 +142,9 @@ const UserSignupScreen = ({ navigation }) => {
         secureTextEntry={!isConfirmPasswordVisible}
         iconName="lock-outline"
         rightIconSet="ion"
-        rightIconName={isConfirmPasswordVisible ? 'eye-outline' : 'eye-off-outline'}
+        rightIconName={
+          isConfirmPasswordVisible ? 'eye-outline' : 'eye-off-outline'
+        }
         onRightPress={() => setIsConfirmPasswordVisible(value => !value)}
       />
 
@@ -122,7 +152,8 @@ const UserSignupScreen = ({ navigation }) => {
       <AppButton
         isLoading={isLoading}
         onPress={handleSignup}
-        style={styles.fullWidth}>
+        style={styles.fullWidth}
+      >
         Create Account
       </AppButton>
 
@@ -171,16 +202,13 @@ const UserSignupScreen = ({ navigation }) => {
   );
 };
 
-const FieldLabel = ({ text }) => (
-  <AppText style={styles.label}>{text}</AppText>
-);
+const FieldLabel = ({ text }) => <AppText style={styles.label}>{text}</AppText>;
 
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    paddingHorizontal: responsiveWidth(7.8),
-    paddingTop: responsiveHeight(4.9),
-    paddingBottom: responsiveHeight(4.9),
+    paddingHorizontal: responsiveWidth(5.8),
+    paddingVertical: responsiveHeight(4),
   },
   fullWidth: {
     width: '100%',

@@ -4,7 +4,6 @@ import AppButton from '../../../components/AppButton';
 import AppIcon from '../../../components/AppIcon';
 import AppImageHeader from '../../../components/AppImageHeader';
 import AppText from '../../../components/AppText';
-import GlassCard from '../../../components/GlassCard';
 import LineBreak from '../../../components/LineBreak';
 import ScreenWrapper from '../../../components/ScreenWrapper';
 import { AppAssets } from '../../../utils/AppAssets';
@@ -49,7 +48,13 @@ const HealingSupportScreen = ({ navigation }) => {
         height={responsiveHeight(20.6)}
       />
       <View style={styles.body}>
-        {selectedTab !== 'Learn' ? <QuoteCard /> : null}
+        {selectedTab !== 'Learn' ? (
+          <>
+            <QuoteCard />
+            <LineBreak height={2.4} />
+          </>
+        ) : null}
+
         <View style={styles.tabWrap}>
           {tabs.map(tab => (
             <TouchableOpacity
@@ -61,38 +66,80 @@ const HealingSupportScreen = ({ navigation }) => {
             </TouchableOpacity>
           ))}
         </View>
+
         <LineBreak height={2.4} />
         {selectedTab === 'Reflect' ? <ReflectContent /> : null}
         {selectedTab === 'Learn' ? <LearnContent /> : null}
         {selectedTab === 'Affirm' ? <AffirmContent /> : null}
-        {selectedTab === 'Learn' ? <QuoteCard small /> : null}
-        <NeedToTalkCard navigation={navigation} />
+
+        {selectedTab === 'Learn' ? (
+          <>
+            <LineBreak height={2.4} />
+            <QuoteCard small />
+          </>
+        ) : null}
+
+        <LineBreak height={2.4} />
+        <NeedToTalkCard />
       </View>
     </ScreenWrapper>
   );
 };
 
 const QuoteCard = ({ small }) => (
-  <GlassCard contentStyle={[styles.quoteCard, small && styles.quoteCardSmall]}>
-    <AppIcon name="format-quote" color={AppColors.white} size={24} />
+  <View style={styles.quoteCard}>
+    <View style={styles.quoteTop}>
+      <AppIcon name="format-quote" color={AppColors.white} size={30} />
+      <View style={styles.quoteBadge}>
+        <AppText style={styles.quoteBadgeText}>Quote of the Day</AppText>
+      </View>
+    </View>
+    <LineBreak height={1.6} />
     <AppText style={styles.quoteText}>
-      Grief is love with nowhere to go, so we give it places to rest in memory.
+      "What we have once enjoyed deeply we can never lose. All that we love deeply becomes a part of us."
     </AppText>
-  </GlassCard>
+    <LineBreak height={1.2} />
+    <AppText style={styles.quoteAuthor}>- Helen Keller</AppText>
+    {!small ? (
+      <>
+        <LineBreak height={2.4} />
+        <View style={styles.indicatorRow}>
+          <View style={styles.indicatorActive} />
+          <View style={styles.indicatorDot} />
+          <View style={styles.indicatorDot} />
+          <View style={styles.indicatorDot} />
+        </View>
+      </>
+    ) : null}
+  </View>
 );
 
 const ReflectContent = () => (
   <View>
     <SectionIntro title="Guided Reflections" subtitle="Gentle practices for peaceful remembrance" />
     {reflectCards.map(item => (
-      <GlassCard key={item[0]} contentStyle={styles.musicCard}>
-        <View style={styles.iconCircle}><AppIcon name="music-note" color={AppColors.themeColor} size={22} /></View>
-        <View style={styles.cardCopy}>
-          <AppText style={styles.cardTitle}>{item[0]}</AppText>
-          <AppText style={styles.cardSubtitle}>{item[1]}</AppText>
+      <View key={item[0]} style={styles.musicCard}>
+        <View style={styles.musicTop}>
+          <View style={styles.iconCircle}>
+            <AppIcon name="music-note" color={AppColors.themeColor} size={24} />
+          </View>
+          <View style={styles.cardCopy}>
+            <View style={styles.musicTitleRow}>
+              <AppText style={styles.cardTitle}>{item[0]}</AppText>
+              <View style={styles.durationBadge}>
+                <AppText style={styles.duration}>{item[2]}</AppText>
+              </View>
+            </View>
+          </View>
         </View>
-        <AppText style={styles.duration}>{item[2]}</AppText>
-      </GlassCard>
+        <View style={styles.musicBody}>
+          <AppText style={styles.cardSubtitle}>{item[1]}</AppText>
+          <LineBreak height={1.2} />
+          <TouchableOpacity activeOpacity={0.82} style={styles.smallAction}>
+            <AppText style={styles.smallActionText}>Start Practice</AppText>
+          </TouchableOpacity>
+        </View>
+      </View>
     ))}
   </View>
 );
@@ -101,14 +148,23 @@ const LearnContent = () => (
   <View>
     <SectionIntro title="Healing Resources" subtitle="Articles and guides for your journey" />
     {learnCards.map(item => (
-      <GlassCard key={item[0]} contentStyle={styles.resourceCard}>
-        <View style={styles.iconCircle}><AppIcon name={item[3]} color={AppColors.themeColor} size={22} /></View>
+      <View key={item[0]} style={styles.resourceCard}>
+        <View style={styles.iconCircle}>
+          <AppIcon name={item[3]} color={AppColors.themeColor} size={24} />
+        </View>
         <View style={styles.cardCopy}>
-          <AppText style={styles.resourceKicker}>{item[0]}</AppText>
+          <View style={styles.tagBadge}>
+            <AppText style={styles.tagText}>{item[0]}</AppText>
+          </View>
+          <LineBreak height={0.8} />
           <AppText style={styles.cardTitle}>{item[1]}</AppText>
           <AppText style={styles.cardSubtitle}>{item[2]}</AppText>
+          <LineBreak height={1.2} />
+          <TouchableOpacity activeOpacity={0.82} style={styles.smallAction}>
+            <AppText style={styles.smallActionText}>Read More</AppText>
+          </TouchableOpacity>
         </View>
-      </GlassCard>
+      </View>
     ))}
   </View>
 );
@@ -118,68 +174,244 @@ const AffirmContent = () => (
     <SectionIntro title="Daily Affirmations" subtitle="Gentle reminders for your heart" />
     {affirmations.map(text => (
       <View key={text} style={styles.affirmRow}>
-        <View style={styles.smallIconCircle}><AppIcon name="favorite-border" color={AppColors.themeColor} size={18} /></View>
+        <View style={styles.smallIconCircle}>
+          <AppIcon name="favorite-border" color={AppColors.themeColor} size={16} />
+        </View>
         <AppText style={styles.affirmText}>{text}</AppText>
       </View>
     ))}
-    <GlassCard contentStyle={styles.tipCard}>
+
+    <LineBreak height={1.2} />
+    <View style={styles.tipCard}>
       <AppIcon name="lightbulb-outline" color={AppColors.white} size={24} />
       <View style={styles.cardCopy}>
-        <AppText style={styles.cardTitle}>Practice Tip</AppText>
+        <AppText style={styles.tipTitle}>Practice Tip</AppText>
         <AppText style={styles.cardSubtitle}>
-          Read one affirmation slowly, breathe deeply, and let the words meet you where you are.
+          Choose one affirmation each morning. Repeat it gently throughout the day whenever you need comfort or strength.
         </AppText>
       </View>
-    </GlassCard>
+    </View>
   </View>
 );
 
 const SectionIntro = ({ subtitle, title }) => (
   <>
     <AppText style={styles.sectionTitle}>{title}</AppText>
+    <LineBreak height={0.4} />
     <AppText style={styles.sectionSubtitle}>{subtitle}</AppText>
     <LineBreak height={1.6} />
   </>
 );
 
-const NeedToTalkCard = ({ navigation }) => (
-  <GlassCard contentStyle={styles.needCard}>
-    <AppText style={styles.cardTitle}>Need to talk?</AppText>
-    <AppText style={styles.cardSubtitle}>Our support team is here whenever you need a gentle hand.</AppText>
+const NeedToTalkCard = () => (
+  <View style={styles.needCard}>
+    <AppText style={styles.needTitle}>Need to Talk?</AppText>
+    <LineBreak height={0.8} />
+    <AppText style={styles.needSubtitle}>Connect with grief counselors and support{`\n`}groups</AppText>
     <LineBreak height={1.6} />
-    <AppButton style={styles.supportButton} onPress={() => navigation.navigate('HelpSupport')}>
-      Contact Support
+    <AppButton style={styles.supportButton} textStyle={styles.supportButtonText}>
+      Find Support
     </AppButton>
-  </GlassCard>
+  </View>
 );
 
 const styles = StyleSheet.create({
-  content: { paddingBottom: responsiveHeight(5) },
+  affirmRow: {
+    alignItems: 'center',
+    borderColor: AppColors.homeBorder,
+    borderRadius: 16,
+    borderWidth: 1,
+    flexDirection: 'row',
+    marginBottom: responsiveHeight(1.2),
+    padding: responsiveWidth(4),
+  },
+  affirmText: {
+    color: AppColors.white,
+    flex: 1,
+    fontSize: responsiveFontSize(1.28),
+    fontStyle: 'italic',
+    lineHeight: responsiveHeight(2),
+    marginLeft: responsiveWidth(3.8),
+  },
   body: { padding: responsiveWidth(5.8) },
-  quoteCard: { marginBottom: responsiveHeight(2.4), backgroundColor: AppColors.memorialCard, borderColor: AppColors.homeBorder },
-  quoteCardSmall: { marginTop: responsiveHeight(2.4) },
-  quoteText: { color: AppColors.white, fontSize: responsiveFontSize(1.45), lineHeight: responsiveHeight(2.35), marginTop: responsiveHeight(0.8) },
-  tabWrap: { flexDirection: 'row', height: responsiveHeight(4.75), padding: 4, borderRadius: responsiveHeight(2.4), backgroundColor: AppColors.white },
-  tabButton: { flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: responsiveHeight(2) },
-  tabButtonActive: { backgroundColor: AppColors.themeColor },
-  tabText: { color: AppColors.themeColor, fontSize: responsiveFontSize(1.28), fontWeight: '700' },
-  tabTextActive: { color: AppColors.white },
-  sectionTitle: { color: AppColors.white, fontSize: responsiveFontSize(1.65), fontWeight: '700' },
-  sectionSubtitle: { color: AppColors.homeTextMuted, fontSize: responsiveFontSize(1.15), marginTop: responsiveHeight(0.4) },
-  musicCard: { alignItems: 'center', flexDirection: 'row', marginBottom: responsiveHeight(1.3), backgroundColor: AppColors.memorialCard, borderColor: AppColors.homeBorder },
-  resourceCard: { flexDirection: 'row', marginBottom: responsiveHeight(1.3), backgroundColor: AppColors.memorialCard, borderColor: AppColors.homeBorder },
-  iconCircle: { alignItems: 'center', justifyContent: 'center', width: responsiveWidth(11.2), height: responsiveWidth(11.2), borderRadius: responsiveWidth(5.6), backgroundColor: AppColors.white },
-  smallIconCircle: { alignItems: 'center', justifyContent: 'center', width: responsiveWidth(8.6), height: responsiveWidth(8.6), borderRadius: responsiveWidth(4.3), backgroundColor: AppColors.white },
   cardCopy: { flex: 1, marginLeft: responsiveWidth(3.8) },
-  cardTitle: { color: AppColors.white, fontSize: responsiveFontSize(1.5), fontWeight: '700', lineHeight: responsiveHeight(2.25) },
-  cardSubtitle: { color: AppColors.homeTextMuted, fontSize: responsiveFontSize(1.22), lineHeight: responsiveHeight(2.05), marginTop: responsiveHeight(0.4) },
-  resourceKicker: { color: AppColors.homeTextMuted, fontSize: responsiveFontSize(1.1), marginBottom: responsiveHeight(0.4) },
-  duration: { color: AppColors.white, fontSize: responsiveFontSize(1.18), fontWeight: '700' },
-  affirmRow: { alignItems: 'center', flexDirection: 'row', marginBottom: responsiveHeight(1.4) },
-  affirmText: { flex: 1, color: AppColors.white, fontSize: responsiveFontSize(1.38), lineHeight: responsiveHeight(2.3), marginLeft: responsiveWidth(3.5) },
-  tipCard: { flexDirection: 'row', marginTop: responsiveHeight(1.2), backgroundColor: AppColors.memorialCard, borderColor: AppColors.homeBorder },
-  needCard: { marginTop: responsiveHeight(2.4), backgroundColor: AppColors.memorialCard, borderColor: AppColors.homeBorder },
-  supportButton: { backgroundColor: AppColors.onboardingButton, borderRadius: responsiveHeight(3) },
+  cardSubtitle: {
+    color: AppColors.homeTextMuted,
+    fontSize: responsiveFontSize(1.18),
+    lineHeight: responsiveHeight(1.95),
+    marginTop: responsiveHeight(0.4),
+  },
+  cardTitle: {
+    color: AppColors.white,
+    fontSize: responsiveFontSize(1.55),
+    fontWeight: '500',
+    lineHeight: responsiveHeight(2.35),
+  },
+  content: { paddingBottom: responsiveHeight(5) },
+  duration: { color: AppColors.white, fontSize: responsiveFontSize(0.95) },
+  durationBadge: {
+    backgroundColor: '#506E95',
+    borderRadius: 4,
+    paddingHorizontal: responsiveWidth(1.5),
+    paddingVertical: responsiveHeight(0.25),
+  },
+  iconCircle: {
+    alignItems: 'center',
+    backgroundColor: AppColors.white,
+    borderRadius: responsiveWidth(6),
+    height: responsiveWidth(12),
+    justifyContent: 'center',
+    width: responsiveWidth(12),
+  },
+  indicatorActive: {
+    backgroundColor: AppColors.white,
+    borderRadius: 2,
+    height: 4,
+    width: responsiveWidth(5.8),
+  },
+  indicatorDot: {
+    backgroundColor: 'rgba(255,255,255,0.24)',
+    borderRadius: 2,
+    height: 4,
+    marginLeft: responsiveWidth(1),
+    width: 4,
+  },
+  indicatorRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'center' },
+  musicBody: { paddingLeft: responsiveWidth(16) },
+  musicCard: {
+    backgroundColor: AppColors.memorialCard,
+    borderColor: AppColors.homeBorder,
+    borderRadius: 16,
+    borderWidth: 0.5,
+    marginBottom: responsiveHeight(1.6),
+    padding: responsiveWidth(4),
+  },
+  musicTitleRow: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  musicTop: { alignItems: 'center', flexDirection: 'row' },
+  needCard: {
+    alignItems: 'center',
+    backgroundColor: AppColors.onboardingButton,
+    borderRadius: 24,
+    padding: responsiveWidth(5.8),
+  },
+  needSubtitle: {
+    color: AppColors.white,
+    fontSize: responsiveFontSize(1.18),
+    lineHeight: responsiveHeight(1.85),
+    textAlign: 'center',
+  },
+  needTitle: {
+    color: AppColors.white,
+    fontSize: responsiveFontSize(1.55),
+    fontWeight: '700',
+  },
+  quoteAuthor: { color: AppColors.homeTextMuted, fontSize: responsiveFontSize(1.12) },
+  quoteBadge: {
+    backgroundColor: '#506E95',
+    borderRadius: 6,
+    marginLeft: responsiveWidth(3),
+    paddingHorizontal: responsiveWidth(2),
+    paddingVertical: responsiveHeight(0.4),
+  },
+  quoteBadgeText: { color: AppColors.white, fontSize: responsiveFontSize(0.95) },
+  quoteCard: {
+    backgroundColor: AppColors.memorialCard,
+    borderColor: AppColors.homeBorder,
+    borderRadius: 24,
+    borderWidth: 0.5,
+    padding: responsiveWidth(5.8),
+  },
+  quoteText: {
+    color: AppColors.white,
+    fontSize: responsiveFontSize(1.35),
+    fontStyle: 'italic',
+    lineHeight: responsiveHeight(2.3),
+  },
+  quoteTop: { alignItems: 'center', flexDirection: 'row' },
+  resourceCard: {
+    alignItems: 'flex-start',
+    backgroundColor: AppColors.memorialCard,
+    borderColor: AppColors.homeBorder,
+    borderRadius: 16,
+    borderWidth: 0.5,
+    flexDirection: 'row',
+    marginBottom: responsiveHeight(1.6),
+    padding: responsiveWidth(4.8),
+  },
+  sectionSubtitle: {
+    color: AppColors.homeTextMuted,
+    fontSize: responsiveFontSize(1.18),
+  },
+  sectionTitle: {
+    color: AppColors.white,
+    fontSize: responsiveFontSize(1.55),
+    fontWeight: '500',
+  },
+  smallAction: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#506E95',
+    borderRadius: 20,
+    paddingHorizontal: responsiveWidth(3.8),
+    paddingVertical: responsiveHeight(0.8),
+  },
+  smallActionText: { color: AppColors.white, fontSize: responsiveFontSize(1.12) },
+  smallIconCircle: {
+    alignItems: 'center',
+    backgroundColor: AppColors.white,
+    borderRadius: responsiveWidth(4),
+    height: responsiveWidth(8),
+    justifyContent: 'center',
+    width: responsiveWidth(8),
+  },
+  supportButton: {
+    backgroundColor: AppColors.memorialCard,
+    borderRadius: 30,
+    width: '100%',
+  },
+  supportButtonText: {
+    color: AppColors.white,
+    fontWeight: '700',
+  },
+  tabButton: {
+    alignItems: 'center',
+    borderRadius: responsiveHeight(2),
+    flex: 1,
+    justifyContent: 'center',
+  },
+  tabButtonActive: { backgroundColor: AppColors.onboardingButton },
+  tabText: { color: AppColors.white, fontSize: responsiveFontSize(1.28), fontWeight: '700' },
+  tabTextActive: { color: AppColors.white },
+  tabWrap: {
+    backgroundColor: AppColors.memorialCard,
+    borderRadius: responsiveHeight(2.4),
+    flexDirection: 'row',
+    height: responsiveHeight(4.75),
+    padding: 4,
+  },
+  tagBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#506E95',
+    borderColor: AppColors.homeBorder,
+    borderRadius: 4,
+    borderWidth: 1,
+    paddingHorizontal: responsiveWidth(2),
+    paddingVertical: responsiveHeight(0.2),
+  },
+  tagText: { color: AppColors.white, fontSize: responsiveFontSize(0.95) },
+  tipCard: {
+    alignItems: 'flex-start',
+    backgroundColor: AppColors.memorialCard,
+    borderColor: AppColors.homeBorder,
+    borderRadius: 16,
+    borderWidth: 0.5,
+    flexDirection: 'row',
+    padding: responsiveWidth(4),
+  },
+  tipTitle: { color: AppColors.white, fontSize: responsiveFontSize(1.35), fontWeight: '700' },
 });
 
 export default HealingSupportScreen;

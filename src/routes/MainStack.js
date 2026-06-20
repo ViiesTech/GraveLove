@@ -1,4 +1,5 @@
 import React from 'react';
+import { useSelector } from 'react-redux';
 import { StyleSheet } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -119,7 +120,7 @@ const getTabScreenOptions = () => ({
 
 const UserTabs = () => (
   <UserTabNavigator.Navigator
-    initialRouteName="UserHome"
+    initialRouteName="UserMostLovedMemories"
     screenOptions={getTabScreenOptions}
   >
     <UserTabNavigator.Screen
@@ -145,16 +146,23 @@ const UserTabs = () => (
   </UserTabNavigator.Navigator>
 );
 
-const vendorTabIcons = {
-  VendorDashboard: 'home',
-  VendorTasks: 'work-outline',
-  VendorChat: 'chat-bubble-outline',
-  VendorEarnings: 'attach-money',
-  VendorProfile: 'person-outline',
+const vendorTabIconMap = {
+  VendorDashboard: AppSvgAssets.home,
+  VendorTasks: AppSvgAssets.vendors,
+  VendorChat: AppSvgAssets.comment,
+  VendorEarnings: AppSvgAssets.dollarSignOutline,
+  VendorProfile: AppSvgAssets.profile,
 };
 
+const VendorTabIcon = ({ color, routeName }) => (
+  <AppIcon
+    svg={recolorTabSvg(vendorTabIconMap[routeName] || AppSvgAssets.home, color)}
+    size={routeName === 'VendorEarnings' ? 32 : 28}
+  />
+);
+
 const makeVendorTabIcon = routeName => ({ color }) => (
-  <AppIcon name={vendorTabIcons[routeName]} color={color} size={27} />
+  <VendorTabIcon color={color} routeName={routeName} />
 );
 
 const VendorTabs = () => (
@@ -418,15 +426,19 @@ export const VendorMain = () => (
   </VendorMainStack.Navigator>
 );
 
-const MainStack = () => (
-  <MainStackNavigator.Navigator
-    initialRouteName="UserMain"
-    screenOptions={stackScreenOptions}
-  >
-    <MainStackNavigator.Screen name="UserMain" component={UserMain} />
-    <MainStackNavigator.Screen name="VendorMain" component={VendorMain} />
-  </MainStackNavigator.Navigator>
-);
+const MainStack = () => {
+  const role = useSelector(state => state.auth.role);
+
+  return (
+    <MainStackNavigator.Navigator
+      initialRouteName={role === 'vendor' ? 'VendorMain' : 'UserMain'}
+      screenOptions={stackScreenOptions}
+    >
+      <MainStackNavigator.Screen name="UserMain" component={UserMain} />
+      <MainStackNavigator.Screen name="VendorMain" component={VendorMain} />
+    </MainStackNavigator.Navigator>
+  );
+};
 
 const styles = StyleSheet.create({
   tabBar: {

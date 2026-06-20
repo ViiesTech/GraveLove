@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Modal, ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import AppIcon from '../../../components/AppIcon';
 import AppText from '../../../components/AppText';
 import CreateMemorialHeader from '../../../components/CreateMemorialHeader';
 import LineBreak from '../../../components/LineBreak';
 import ScreenWrapper from '../../../components/ScreenWrapper';
+import { showToast } from '../../../utils/Toast';
 import { AppColors } from '../../../utils/AppColors';
 import {
   responsiveFontSize,
@@ -14,82 +15,107 @@ import {
 
 const relationships = ['Parent', 'Sibling', 'Friend', 'Pet'];
 
-const CreateMemorialStep1 = ({ navigation }) => {
-  const [relationship, setRelationship] = useState('');
+const CreateMemorialStep1 = ({ navigation, route }) => {
+  const initialMemorial = route?.params?.memorial || {};
+  const [fullName, setFullName] = useState(initialMemorial.name || initialMemorial.full_name || '');
+  const [relationship, setRelationship] = useState(initialMemorial.relationship || initialMemorial.relation || '');
+  const [birthDate, setBirthDate] = useState(initialMemorial.birth_date || '');
+  const [deathDate, setDeathDate] = useState(initialMemorial.death_date || '');
   const [isRelationshipOpen, setIsRelationshipOpen] = useState(false);
+
+  const continueNext = () => {
+    if (!fullName.trim() || !relationship.trim()) {
+      showToast('Missing details', 'Full name and relationship are required.');
+      return;
+    }
+
+    navigation.navigate('CreateMemorialStep2', {
+      memorialId: initialMemorial.id,
+      formData: {
+        name: fullName.trim(),
+        relationship: relationship.trim(),
+        birth_date: birthDate.trim(),
+        death_date: deathDate.trim(),
+      },
+    });
+  };
 
   return (
     <ScreenWrapper safeAreaEdges={[]} style={styles.screen}>
-      <CreateMemorialHeader
-        onBack={() => navigation.goBack()}
-        step={1}
-      />
+      <CreateMemorialHeader onBack={() => navigation.goBack()} step={1} />
       <ScrollView
         bounces
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}>
         <FieldLabel label="Full Name *" />
-        <TextField placeholder="Enter full name" />
+        <TextField
+          onChangeText={setFullName}
+          placeholder="Enter full name"
+          value={fullName}
+        />
 
         <LineBreak height={2.15} />
         <FieldLabel label="Relationship *" />
-        <TouchableOpacity
-          activeOpacity={0.82}
-          onPress={() => setIsRelationshipOpen(true)}
-          style={styles.field}>
-          <AppText style={[styles.inputText, !relationship && styles.placeholder]}>
-            {relationship || 'Select relationship'}
-          </AppText>
-          <AppIcon
-            iconSet="ion"
-            name="chevron-down"
-            color={AppColors.homeTextMuted}
-            size={responsiveWidth(4.35)}
-          />
-        </TouchableOpacity>
+        <View style={styles.dropdownWrap}>
+          <TouchableOpacity
+            activeOpacity={0.82}
+            onPress={() => setIsRelationshipOpen(prev => !prev)}
+            style={[
+              styles.field,
+              isRelationshipOpen && styles.relationshipFieldOpen,
+            ]}>
+            <AppText style={[styles.inputText, !relationship && styles.placeholder]}>
+              {relationship || 'Select relationship'}
+            </AppText>
+            <AppIcon
+              iconSet="ion"
+              name={isRelationshipOpen ? 'chevron-up' : 'chevron-down'}
+              color="rgba(255, 255, 255, 0.3)"
+              size={responsiveWidth(4.35)}
+            />
+          </TouchableOpacity>
+          {isRelationshipOpen ? (
+            <View style={styles.inlineDropdown}>
+              {relationships.map((item, index) => (
+                <TouchableOpacity
+                  key={item}
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    setRelationship(item);
+                    setIsRelationshipOpen(false);
+                  }}
+                  style={[
+                    styles.dropdownItem,
+                    index === relationships.length - 1 && styles.dropdownItemLast,
+                  ]}>
+                  <AppText style={styles.dropdownText}>{item}</AppText>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : null}
+        </View>
 
         <LineBreak height={2.15} />
         <FieldLabel label="Birth Date" />
-        <DateField placeholder="Select Date" />
+        <TextField
+          onChangeText={setBirthDate}
+          placeholder="YYYY-MM-DD"
+          value={birthDate}
+        />
 
         <LineBreak height={2.15} />
         <FieldLabel label="Death Date" />
-        <DateField placeholder="Select Date" />
+        <TextField
+          onChangeText={setDeathDate}
+          placeholder="YYYY-MM-DD"
+          value={deathDate}
+        />
 
         <LineBreak height={4.3} />
-        <PrimaryButton
-          label="Continue"
-          onPress={() => navigation.navigate('CreateMemorialStep2')}
-        />
+        <PrimaryButton label="Continue" onPress={continueNext} />
         <LineBreak height={4.3} />
       </ScrollView>
-
-      <Modal
-        transparent
-        animationType="fade"
-        visible={isRelationshipOpen}
-        onRequestClose={() => setIsRelationshipOpen(false)}>
-        <TouchableOpacity
-          activeOpacity={1}
-          onPress={() => setIsRelationshipOpen(false)}
-          style={styles.modalBackdrop}>
-          <View style={styles.dropdown}>
-            {relationships.map(item => (
-              <TouchableOpacity
-                key={item}
-                activeOpacity={0.8}
-                onPress={() => {
-                  setRelationship(item);
-                  setIsRelationshipOpen(false);
-                }}
-                style={styles.dropdownItem}>
-                <AppText style={styles.dropdownText}>{item}</AppText>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </TouchableOpacity>
-      </Modal>
     </ScreenWrapper>
   );
 };
@@ -98,41 +124,41 @@ export const FieldLabel = ({ label }) => (
   <AppText style={styles.label}>{label}</AppText>
 );
 
-export const TextField = ({ multiline, placeholder, style }) => (
+export const TextField = ({ multiline, onChangeText, placeholder, style, value, ...props }) => (
   <View style={[styles.field, multiline && styles.multilineField, style]}>
     <TextInput
+      {...props}
       multiline={multiline}
+      onChangeText={onChangeText}
       placeholder={placeholder}
       placeholderTextColor="rgba(255, 255, 255, 0.3)"
       style={[styles.input, multiline && styles.multilineInput]}
+      value={value}
     />
   </View>
 );
 
-const DateField = ({ placeholder }) => (
-  <TouchableOpacity activeOpacity={0.82} style={styles.field}>
-    <AppText style={styles.placeholder}>{placeholder}</AppText>
-    <AppIcon
-      name="calendar-today"
-      color={AppColors.homeTextMuted}
-      size={responsiveWidth(4.35)}
-    />
+export const PrimaryButton = ({ isLoading = false, label, onPress }) => (
+  <TouchableOpacity
+    activeOpacity={0.84}
+    disabled={isLoading}
+    onPress={onPress}
+    style={[styles.primaryButton, isLoading && styles.disabledButton]}>
+    <AppText style={styles.primaryText}>{isLoading ? 'Please wait...' : label}</AppText>
   </TouchableOpacity>
 );
 
-export const PrimaryButton = ({ label, onPress }) => (
-  <TouchableOpacity activeOpacity={0.84} onPress={onPress} style={styles.primaryButton}>
-    <AppText style={styles.primaryText}>{label}</AppText>
-  </TouchableOpacity>
-);
-
-export const BackContinueButtons = ({ continueLabel = 'Continue', onBack, onContinue }) => (
+export const BackContinueButtons = ({ continueLabel = 'Continue', isLoading = false, onBack, onContinue }) => (
   <View style={styles.buttonRow}>
-    <TouchableOpacity activeOpacity={0.82} onPress={onBack} style={styles.outlineButton}>
+    <TouchableOpacity activeOpacity={0.82} disabled={isLoading} onPress={onBack} style={styles.outlineButton}>
       <AppText style={styles.outlineText}>Back</AppText>
     </TouchableOpacity>
-    <TouchableOpacity activeOpacity={0.84} onPress={onContinue} style={styles.halfPrimaryButton}>
-      <AppText style={styles.primaryText}>{continueLabel}</AppText>
+    <TouchableOpacity
+      activeOpacity={0.84}
+      disabled={isLoading}
+      onPress={onContinue}
+      style={[styles.halfPrimaryButton, isLoading && styles.disabledButton]}>
+      <AppText style={styles.primaryText}>{isLoading ? 'Please wait...' : continueLabel}</AppText>
     </TouchableOpacity>
   </View>
 );
@@ -159,6 +185,13 @@ export const styles = StyleSheet.create({
     minHeight: responsiveHeight(5.8),
     paddingHorizontal: responsiveWidth(3.86),
     paddingVertical: responsiveHeight(0.42),
+  },
+  dropdownWrap: {
+    zIndex: 5,
+  },
+  relationshipFieldOpen: {
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
   },
   input: {
     color: AppColors.white,
@@ -199,6 +232,9 @@ export const styles = StyleSheet.create({
     fontSize: responsiveFontSize(1.65),
     fontWeight: '700',
   },
+  disabledButton: {
+    opacity: 0.68,
+  },
   buttonRow: {
     flexDirection: 'row',
   },
@@ -225,24 +261,20 @@ export const styles = StyleSheet.create({
     marginLeft: responsiveWidth(3.86),
     paddingVertical: responsiveHeight(1.72),
   },
-  modalBackdrop: {
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
-    flex: 1,
-    justifyContent: 'center',
-    paddingHorizontal: responsiveWidth(8),
-  },
-  dropdown: {
-    backgroundColor: AppColors.memorialCard,
-    borderRadius: 16,
+  inlineDropdown: {
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
     overflow: 'hidden',
-    width: '100%',
   },
   dropdownItem: {
     borderBottomColor: 'rgba(255, 255, 255, 0.08)',
     borderBottomWidth: 1,
     paddingHorizontal: responsiveWidth(4),
     paddingVertical: responsiveHeight(1.6),
+  },
+  dropdownItemLast: {
+    borderBottomWidth: 0,
   },
   dropdownText: {
     color: AppColors.white,

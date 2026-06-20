@@ -7,6 +7,7 @@ import AppIcon from '../../../components/AppIcon';
 import AppText from '../../../components/AppText';
 import LineBreak from '../../../components/LineBreak';
 import ScreenWrapper from '../../../components/ScreenWrapper';
+import VendorSetupHeader from '../../../components/VendorSetupHeader';
 import { AppColors } from '../../../utils/AppColors';
 import { showToast } from '../../../utils/Toast';
 import {
@@ -70,114 +71,110 @@ const VendorSetupProfileScreen = ({ navigation, route }) => {
   return (
     <ScreenWrapper
       isGradient
-      isKeyboardAvoiding
       isScroll
-      keyboardVerticalOffset={responsiveHeight(4)}
+      scrollProps={{
+        automaticallyAdjustKeyboardInsets: true,
+        bounces: false,
+        keyboardDismissMode: 'interactive',
+      }}
       contentContainerStyle={styles.container}>
-      <View style={styles.headerRow}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-          <AppIcon
-            iconSet="material"
-            name="arrow-back"
-            size={24}
-            color={AppColors.gold}
-          />
-        </Pressable>
-        <AppText variant="largeTitle" style={styles.headerTitle}>
-          Setup Your Profile
-        </AppText>
-      </View>
+      <VendorSetupHeader
+        title="Setup Your Profile"
+        onBack={() => navigation.goBack()}
+      />
 
-      <LineBreak height={3.2} />
-      <Pressable
-        style={styles.avatarWrap}
-        onPress={() => setIsPickerVisible(true)}>
-        <View style={styles.avatar}>
-          {profileImage?.uri ? (
-            <Image source={{ uri: profileImage.uri }} style={styles.avatarImage} />
-          ) : (
+      <View style={styles.contentPadding}>
+        <LineBreak height={3.2} />
+        <Pressable
+          style={styles.avatarWrap}
+          onPress={() => setIsPickerVisible(true)}>
+          <View style={styles.avatar}>
+            {profileImage?.uri ? (
+              <Image source={{ uri: profileImage.uri }} style={styles.avatarImage} />
+            ) : (
+              <AppIcon
+                iconSet="material"
+                name="person"
+                size={50}
+                color={AppColors.themeColor}
+              />
+            )}
+          </View>
+          <View style={styles.cameraBadge}>
             <AppIcon
               iconSet="material"
-              name="person"
-              size={50}
-              color={AppColors.gold}
+              name="camera-alt"
+              size={16}
+              color={AppColors.white}
             />
-          )}
+          </View>
+        </Pressable>
+        <LineBreak height={1} />
+        <Pressable onPress={() => setIsPickerVisible(true)}>
+          <AppText style={styles.uploadText}>
+            {profileImage ? 'Change Picture' : 'Upload Profile Picture'}
+          </AppText>
+        </Pressable>
+
+        <LineBreak height={3.9} />
+        <FieldLabel text="Business Name *" />
+        <LineBreak height={1} />
+        <SetupTextField
+          value={businessName}
+          onChangeText={setBusinessName}
+          placeholder="Enter your business name"
+        />
+
+        <LineBreak height={2.45} />
+        <FieldLabel text="Years of Experience" />
+        <LineBreak height={1} />
+        <SetupTextField
+          value={experience}
+          onChangeText={setExperience}
+          placeholder="e.g., 5 years"
+        />
+
+        <LineBreak height={2.45} />
+        <FieldLabel text="Service Location *" />
+        <LineBreak height={1} />
+        <SetupTextField
+          value={location}
+          onChangeText={setLocation}
+          placeholder="City, State"
+        />
+
+        <LineBreak height={2.45} />
+        <FieldLabel text="Phone Number *" />
+        <LineBreak height={1} />
+        <SetupTextField
+          value={phone}
+          onChangeText={setPhone}
+          placeholder="+1 (555) 000-0000"
+          keyboardType="phone-pad"
+        />
+
+        <LineBreak height={2.95} />
+        <View style={styles.infoCard}>
+          <AppText variant="title" style={styles.infoTitle}>
+            How it works
+          </AppText>
+          <LineBreak height={1.5} />
+          <BulletPoint text="Clients will post jobs from their app" />
+          <BulletPoint text="Jobs matching your services will appear in your dashboard" />
+          <BulletPoint text="Review job details and accept or decline" />
+          <BulletPoint text="Complete tasks and receive payments" />
         </View>
-        <View style={styles.cameraBadge}>
-          <AppIcon
-            iconSet="material"
-            name="camera-alt"
-            size={16}
-            color={AppColors.bgDark}
-          />
-        </View>
-      </Pressable>
-      <LineBreak height={1} />
-      <Pressable onPress={() => setIsPickerVisible(true)}>
-        <AppText style={styles.uploadText}>
-          {profileImage ? 'Change Picture' : 'Upload Profile Picture'}
+
+        <LineBreak height={2} />
+        <AppText variant="bodyDim" style={styles.requiredText}>
+          * Required fields
         </AppText>
-      </Pressable>
 
-      <LineBreak height={3.9} />
-      <FieldLabel text="Business Name *" />
-      <LineBreak height={1} />
-      <SetupTextField
-        value={businessName}
-        onChangeText={setBusinessName}
-        placeholder="Enter your business name"
-      />
-
-      <LineBreak height={2.45} />
-      <FieldLabel text="Years of Experience" />
-      <LineBreak height={1} />
-      <SetupTextField
-        value={experience}
-        onChangeText={setExperience}
-        placeholder="e.g., 5 years"
-      />
-
-      <LineBreak height={2.45} />
-      <FieldLabel text="Service Location *" />
-      <LineBreak height={1} />
-      <SetupTextField
-        value={location}
-        onChangeText={setLocation}
-        placeholder="City, State"
-      />
-
-      <LineBreak height={2.45} />
-      <FieldLabel text="Phone Number *" />
-      <LineBreak height={1} />
-      <SetupTextField
-        value={phone}
-        onChangeText={setPhone}
-        placeholder="+1 (555) 000-0000"
-        keyboardType="phone-pad"
-      />
-
-      <LineBreak height={2.95} />
-      <View style={styles.infoCard}>
-        <AppText variant="title" style={styles.infoTitle}>
-          How it works
-        </AppText>
-        <LineBreak height={1.5} />
-        <BulletPoint text="Clients will post jobs from their app" />
-        <BulletPoint text="Jobs matching your services will appear in your dashboard" />
-        <BulletPoint text="Review job details and accept or decline" />
-        <BulletPoint text="Complete tasks and receive payments" />
+        <LineBreak height={2.95} />
+        <AppButton onPress={goToNextStep} style={styles.nextButton}>
+          Next
+        </AppButton>
       </View>
-
-      <LineBreak height={2} />
-      <AppText variant="bodyDim" style={styles.requiredText}>
-        * Required fields
-      </AppText>
-
-      <LineBreak height={2.95} />
-      <AppButton onPress={goToNextStep} style={styles.nextButton}>
-        Next
-      </AppButton>
 
       <ImagePickerModal
         isVisible={isPickerVisible}
@@ -243,22 +240,11 @@ const PickerOption = ({ iconName, label, onPress }) => (
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: responsiveWidth(3.9),
     paddingTop: responsiveHeight(2),
     paddingBottom: responsiveHeight(4.9),
   },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backButton: {
-    padding: responsiveWidth(1),
-  },
-  headerTitle: {
-    marginLeft: responsiveWidth(3.9),
-    color: AppColors.gold,
-    fontSize: responsiveFontSize(2.35),
-    fontWeight: '400',
+  contentPadding: {
+    paddingHorizontal: responsiveWidth(3.9),
   },
   avatarWrap: {
     alignSelf: 'center',
@@ -269,7 +255,7 @@ const styles = StyleSheet.create({
     width: responsiveWidth(24.2),
     height: responsiveWidth(24.2),
     borderRadius: responsiveWidth(12.1),
-    backgroundColor: 'rgba(248, 251, 255, 0.16)',
+    backgroundColor: AppColors.white,
     overflow: 'hidden',
   },
   avatarImage: {
@@ -287,7 +273,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: AppColors.bgDark,
     borderRadius: responsiveWidth(3.9),
-    backgroundColor: AppColors.goldAction,
+    backgroundColor: AppColors.memorialCard,
   },
   uploadText: {
     alignSelf: 'center',
@@ -297,8 +283,8 @@ const styles = StyleSheet.create({
     color: AppColors.gold,
   },
   inputWrap: {
-    borderWidth: 1,
-    borderColor: AppColors.border,
+    borderWidth: 0.5,
+    borderColor: AppColors.inputBorder,
     borderRadius: 8,
     backgroundColor: 'transparent',
   },
@@ -312,7 +298,7 @@ const styles = StyleSheet.create({
   infoCard: {
     padding: responsiveWidth(4.8),
     borderRadius: 12,
-    backgroundColor: 'rgba(248, 251, 255, 0.12)',
+    backgroundColor: AppColors.onboardingButton,
   },
   infoTitle: {
     color: AppColors.gold,
@@ -323,17 +309,20 @@ const styles = StyleSheet.create({
     paddingBottom: responsiveHeight(1),
   },
   bulletDot: {
-    color: AppColors.goldDim,
+    color: AppColors.howItWorks,
   },
   bulletText: {
     flex: 1,
-    color: AppColors.goldDim,
+    color: AppColors.howItWorks,
   },
   requiredText: {
+    color: AppColors.white,
     textAlign: 'center',
   },
   nextButton: {
     width: '100%',
+    borderRadius: 14,
+    backgroundColor: AppColors.onboardingButton,
   },
   modalBackdrop: {
     flex: 1,

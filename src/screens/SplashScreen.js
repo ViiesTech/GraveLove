@@ -6,8 +6,8 @@ import {
   StatusBar,
   StyleSheet,
 } from 'react-native';
+import { useSelector } from 'react-redux';
 import AppText from '../components/AppText';
-import LineBreak from '../components/LineBreak';
 import { AppAssets } from '../utils/AppAssets';
 import { AppColors } from '../utils/AppColors';
 import {
@@ -18,6 +18,7 @@ import {
 
 const SplashScreen = ({ navigation }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const { isProfileCreated, role, token } = useSelector(state => state.auth);
 
   useEffect(() => {
     Animated.timing(fadeAnim, {
@@ -27,17 +28,43 @@ const SplashScreen = ({ navigation }) => {
     }).start();
 
     const timer = setTimeout(() => {
-      navigation.replace('Onboarding');
+      if (token) {
+        if (role === 'vendor' && !isProfileCreated) {
+          navigation.reset({
+            index: 0,
+            routes: [{
+              name: 'AuthStack',
+              params: {
+                screen: 'VendorAuth',
+                params: { screen: 'VendorSetupProfile' },
+              },
+            }],
+          });
+          return;
+        }
+
+        navigation.reset({
+          index: 0,
+          routes: [{ name: 'MainStack' }],
+        });
+        return;
+      }
+
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Onboarding' }],
+      });
     }, 2500);
 
     return () => clearTimeout(timer);
-  }, [fadeAnim, navigation]);
+  }, [fadeAnim, isProfileCreated, navigation, role, token]);
 
   return (
     <ImageBackground
       source={AppAssets.images.bgImage}
       resizeMode="cover"
-      style={styles.container}>
+      style={styles.container}
+    >
       <StatusBar
         translucent
         backgroundColor="transparent"
@@ -47,9 +74,8 @@ const SplashScreen = ({ navigation }) => {
         <Image
           source={AppAssets.images.authLogo}
           style={styles.logo}
-          resizeMode="contain"
+          // resizeMode="contain"
         />
-        <LineBreak height={2.5} />
         <AppText style={styles.title}>Grave Love</AppText>
       </Animated.View>
     </ImageBackground>
@@ -73,7 +99,7 @@ const styles = StyleSheet.create({
   },
   title: {
     color: AppColors.gold,
-    fontSize: responsiveFontSize(2.4),
+    fontSize: responsiveFontSize(2.7),
     fontWeight: '700',
     letterSpacing: 1.2,
   },

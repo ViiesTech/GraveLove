@@ -53,7 +53,7 @@ const NotificationCard = ({ item }) => (
 
 const styles = StyleSheet.create({
   content: { paddingBottom: responsiveHeight(5) },
-  header: { padding: responsiveWidth(4), backgroundColor: 'rgba(4,47,103,0.5)' },
+  header: { padding: responsiveWidth(4), backgroundColor: 'transparent' },
   backRow: { alignItems: 'center', flexDirection: 'row' },
   backText: { color: AppColors.white, fontSize: responsiveFontSize(1.3), marginLeft: responsiveWidth(3) },
   title: { color: AppColors.white, fontSize: responsiveFontSize(2.4), fontWeight: '700' },

@@ -44,6 +44,7 @@ const VendorTasksScreen = ({ navigation }) => {
         {filteredTasks.map(task => (
           <VendorServiceCard
             key={`${task[0]}-${task[2]}`}
+            mutedColor="#4E6983"
             service={task}
             onPress={() => navigation.navigate('VendorTaskDetails', { title: task[0] })}
           />
@@ -55,14 +56,14 @@ const VendorTasksScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   content: { paddingBottom: responsiveHeight(9) },
-  header: { padding: responsiveWidth(4), backgroundColor: 'rgba(4,47,103,0.5)' },
-  title: { color: AppColors.white, fontSize: responsiveFontSize(2.45), fontWeight: '700' },
+  header: { padding: responsiveWidth(4), backgroundColor: 'transparent' },
+  title: { color: AppColors.white, fontSize: responsiveFontSize(2.45), fontWeight: '700', textAlign: 'center' },
   body: { padding: responsiveWidth(4) },
   filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: responsiveWidth(2) },
   filterChip: { paddingHorizontal: responsiveWidth(3.8), paddingVertical: responsiveHeight(0.9), borderRadius: 20, borderWidth: 0.5, borderColor: AppColors.homeBorder, backgroundColor: AppColors.memorialCard },
-  filterChipActive: { backgroundColor: AppColors.white, borderColor: AppColors.white },
+  filterChipActive: { backgroundColor: AppColors.onboardingButton, borderColor: AppColors.onboardingButton },
   filterText: { color: AppColors.white, fontSize: responsiveFontSize(1.15) },
-  filterTextActive: { color: AppColors.themeColor, fontWeight: '700' },
+  filterTextActive: { color: AppColors.white, fontWeight: '700' },
 });
 
 export default VendorTasksScreen;

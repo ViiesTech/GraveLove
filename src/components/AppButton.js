@@ -2,7 +2,10 @@ import React from 'react';
 import { ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native';
 import AppText from './AppText';
 import { AppColors } from '../utils/AppColors';
-import { responsiveHeight } from '../utils/Responsive_Dimensions';
+import {
+  responsiveFontSize,
+  responsiveHeight,
+} from '../utils/Responsive_Dimensions';
 
 const AppButton = ({
   children,
@@ -33,7 +36,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     height: responsiveHeight(5.9),
-    borderRadius: responsiveHeight(1.8),
+    borderRadius: responsiveHeight(3),
     backgroundColor: AppColors.themeColor,
   },
   button: {
@@ -50,7 +53,8 @@ const styles = StyleSheet.create({
     opacity: 0.75,
   },
   text: {
-    fontWeight: '400',
+    fontWeight: '500',
+    fontSize: responsiveFontSize(1.65),
     color: AppColors.white,
   },
 });

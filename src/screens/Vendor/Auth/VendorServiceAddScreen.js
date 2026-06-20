@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
+import { useDispatch } from 'react-redux';
 import { Pressable, StyleSheet, TextInput, View } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
 import AppButton from '../../../components/AppButton';
 import AppIcon from '../../../components/AppIcon';
 import AppText from '../../../components/AppText';
 import LineBreak from '../../../components/LineBreak';
 import ScreenWrapper from '../../../components/ScreenWrapper';
-import { AppColors, AppGradients } from '../../../utils/AppColors';
+import VendorSetupHeader from '../../../components/VendorSetupHeader';
+import { AppColors } from '../../../utils/AppColors';
 import { showToast } from '../../../utils/Toast';
+import { useRegisterVendorMutation } from '../../../redux/api/authApi';
+import { setProfileCreated } from '../../../redux/slices/authSlice';
 import {
   responsiveFontSize,
   responsiveHeight,
@@ -22,8 +25,12 @@ const createService = () => ({
   type: '',
 });
 
-const VendorServiceAddScreen = ({ navigation }) => {
+const VendorServiceAddScreen = ({ navigation, route }) => {
+  const dispatch = useDispatch();
   const [services, setServices] = useState([]);
+  const [registerVendor, { isLoading }] = useRegisterVendorMutation();
+  const previousData = route?.params?.previousData || {};
+  const profileImage = route?.params?.profileImage || null;
 
   const addService = () => {
     setServices(items => [...items, createService()]);
@@ -39,7 +46,7 @@ const VendorServiceAddScreen = ({ navigation }) => {
     );
   };
 
-  const completeSetup = () => {
+  const completeSetup = async () => {
     if (!services.length) {
       showToast('Add service', 'Please add at least one service.');
       return;
@@ -58,13 +65,53 @@ const VendorServiceAddScreen = ({ navigation }) => {
       return;
     }
 
-    let rootNavigation = navigation;
+    try {
+      const response = await registerVendor({
+        bodyFields: previousData || {},
+        profileImage,
+        services: services.map(item => ({
+          name: item.name.trim(),
+          type: item.type.trim(),
+          description: item.description.trim(),
+          price: item.price.trim(),
+        })),
+      }).unwrap();
 
-    while (rootNavigation.getParent?.()) {
-      rootNavigation = rootNavigation.getParent();
+      const responseData = response?.data || response || {};
+      const userId = responseData?.user_id || responseData?.id;
+
+      showToast(
+        'Vendor registered',
+        responseData?.message || response?.message || 'Account created.',
+      );
+
+      if (userId) {
+        navigation.navigate('EmailConfirmation', {
+          email: previousData?.email,
+          role: 'vendor',
+          userId,
+          userType: 1,
+        });
+        return;
+      }
+
+      let rootNavigation = navigation;
+
+      while (rootNavigation.getParent?.()) {
+        rootNavigation = rootNavigation.getParent();
+      }
+
+      dispatch(setProfileCreated(true));
+      rootNavigation.reset({
+        index: 0,
+        routes: [{ name: 'MainStack' }],
+      });
+    } catch (error) {
+      showToast(
+        'Registration failed',
+        error?.message || 'Unable to register vendor.',
+      );
     }
-
-    rootNavigation.navigate('MainStack', { screen: 'VendorMain' });
   };
 
   return (
@@ -73,28 +120,20 @@ const VendorServiceAddScreen = ({ navigation }) => {
       isKeyboardAvoiding
       isScroll
       contentContainerStyle={styles.container}>
-      <View style={styles.headerRow}>
-        <Pressable onPress={() => navigation.goBack()} style={styles.backButton}>
-          <AppIcon
-            iconSet="material"
-            name="arrow-back"
-            size={24}
-            color={AppColors.gold}
-          />
-        </Pressable>
-        <AppText variant="largeTitle" style={styles.headerTitle}>
-          Setup Your Services
+      <VendorSetupHeader
+        title="Setup Your Services"
+        onBack={() => navigation.goBack()}
+      />
+
+      <View style={styles.contentPadding}>
+        <LineBreak height={3} />
+        <AppText variant="title" style={styles.sectionTitle}>
+          Services & Pricing *
         </AppText>
-      </View>
+        <LineBreak height={1} />
+        <AppText>Create a service</AppText>
 
-      <LineBreak height={3} />
-      <AppText variant="title" style={styles.sectionTitle}>
-        Services & Pricing *
-      </AppText>
-      <LineBreak height={1} />
-      <AppText>Create a service</AppText>
-
-      {!services.length ? (
+        {!services.length ? (
         <>
           <LineBreak height={4.9} />
           <AppText variant="bodyDim" style={styles.emptyText}>
@@ -117,20 +156,24 @@ const VendorServiceAddScreen = ({ navigation }) => {
         </>
       )}
 
-      <LineBreak height={2.95} />
-      <AppButton onPress={addService} style={styles.actionButton}>
-        Add Service
-      </AppButton>
-      <LineBreak height={2} />
-      <AppButton onPress={completeSetup} style={styles.actionButton}>
-        Complete
-      </AppButton>
+        <LineBreak height={2.95} />
+        <AppButton onPress={addService} style={styles.actionButton}>
+          Add Service
+        </AppButton>
+        <LineBreak height={2} />
+        <AppButton
+          isLoading={isLoading}
+          onPress={completeSetup}
+          style={styles.actionButton}>
+          Complete
+        </AppButton>
+      </View>
     </ScreenWrapper>
   );
 };
 
 const ServiceCard = ({ canRemove, index, onRemove, onUpdate, service }) => (
-  <LinearGradient colors={AppGradients.glassCard} style={styles.serviceCard}>
+  <View style={styles.serviceCard}>
     <View style={styles.serviceHeader}>
       <AppText variant="title" style={styles.serviceTitle}>
         Service {index + 1}
@@ -185,7 +228,7 @@ const ServiceCard = ({ canRemove, index, onRemove, onUpdate, service }) => (
       placeholder="$0.00"
       keyboardType="number-pad"
     />
-  </LinearGradient>
+  </View>
 );
 
 const FieldLabel = ({ text }) => <AppText>{text}</AppText>;
@@ -204,22 +247,11 @@ const SetupTextField = ({ style, ...props }) => (
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: responsiveWidth(3.9),
     paddingTop: responsiveHeight(2),
     paddingBottom: responsiveHeight(4.9),
   },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backButton: {
-    padding: responsiveWidth(1),
-  },
-  headerTitle: {
-    marginLeft: responsiveWidth(3.9),
-    color: AppColors.gold,
-    fontSize: responsiveFontSize(2.35),
-    fontWeight: '400',
+  contentPadding: {
+    paddingHorizontal: responsiveWidth(3.9),
   },
   sectionTitle: {
     color: AppColors.gold,
@@ -229,11 +261,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   serviceCard: {
-    padding: responsiveWidth(3.9),
     marginBottom: responsiveHeight(2),
-    borderWidth: 1,
-    borderColor: AppColors.border,
-    borderRadius: 12,
   },
   serviceHeader: {
     flexDirection: 'row',
@@ -247,7 +275,7 @@ const styles = StyleSheet.create({
     padding: responsiveWidth(1),
   },
   inputWrap: {
-    borderWidth: 1,
+    borderWidth: 0.5,
     borderColor: AppColors.border,
     borderRadius: 8,
     backgroundColor: 'transparent',
@@ -261,9 +289,12 @@ const styles = StyleSheet.create({
   },
   textArea: {
     minHeight: responsiveHeight(11),
+    borderRadius: 8,
   },
   actionButton: {
     width: '100%',
+    borderRadius: 14,
+    backgroundColor: AppColors.onboardingButton,
   },
 });
 

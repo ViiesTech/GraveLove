@@ -8,6 +8,7 @@ import LineBreak from '../components/LineBreak';
 import ScreenWrapper from '../components/ScreenWrapper';
 import { AppColors } from '../utils/AppColors';
 import { showToast } from '../utils/Toast';
+import { useForgotPasswordMutation } from '../redux/api/authApi';
 import {
   responsiveFontSize,
   responsiveHeight,
@@ -16,10 +17,10 @@ import {
 
 const ForgotPasswordScreen = ({ navigation, route }) => {
   const [email, setEmail] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const role = route?.params?.role || 'user';
+  const [forgotPassword, { isLoading }] = useForgotPasswordMutation();
 
-  const handlePasswordReset = () => {
+  const handlePasswordReset = async () => {
     const trimmedEmail = email.trim();
 
     if (!trimmedEmail) {
@@ -32,15 +33,22 @@ const ForgotPasswordScreen = ({ navigation, route }) => {
       return;
     }
 
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      navigation.navigate('EmailConfirmation', {
+    try {
+      const response = await forgotPassword({
         email: trimmedEmail,
-        purpose: 'reset-password',
         role,
-      });
-    }, 800);
+      }).unwrap();
+
+      showToast(
+        'Reset link sent',
+        response?.message || 'Password reset link sent to your email.',
+      );
+      setTimeout(() => {
+        navigation.goBack();
+      }, 600);
+    } catch (error) {
+      showToast('Reset failed', error?.message || 'Failed to send reset link.');
+    }
   };
 
   return (

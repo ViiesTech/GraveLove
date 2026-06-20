@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Modal, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import AppButton from '../../../components/AppButton';
 import AppIcon from '../../../components/AppIcon';
@@ -7,34 +7,85 @@ import AppText from '../../../components/AppText';
 import GlassCard from '../../../components/GlassCard';
 import LineBreak from '../../../components/LineBreak';
 import ScreenWrapper from '../../../components/ScreenWrapper';
+import {
+  useCreateClientBookingVisitLogMutation,
+  useGetClientBookingsQuery,
+  useGetClientBookingVisitLogsQuery,
+} from '../../../redux/api/userApi';
 import { AppAssets } from '../../../utils/AppAssets';
 import { AppColors } from '../../../utils/AppColors';
+import { showToast } from '../../../utils/Toast';
 import {
   responsiveFontSize,
   responsiveHeight,
   responsiveWidth,
 } from '../../../utils/Responsive_Dimensions';
 
-const visits = [
-  {
-    date: 'Oct 30, 2025',
-    location: 'Memorial Gardens',
-    note: 'Fresh flowers placed and surrounding area cleaned with care.',
-    time: '10:00 AM',
-    type: 'service',
-  },
-  {
-    date: 'Oct 12, 2025',
-    location: 'Memorial Gardens',
-    note: 'Visited quietly and spent time remembering family moments.',
-    time: '04:20 PM',
-    type: 'visit',
-  },
-];
+const firstValue = (...values) => values.find(value => value !== undefined && value !== null && value !== '') || '';
 
-const VisitLogScreen = ({ navigation }) => {
+const formatVisitDateTime = value => {
+  const raw = value?.toString() || '';
+  const [date = '-', time = '-'] = raw.split(' ');
+  return { date, time: time === '-' ? '-' : time.slice(0, 5) };
+};
+
+const mapVisitLog = log => {
+  const checkedIn = formatVisitDateTime(firstValue(log?.checked_in_at, log?.visited_at, log?.created_at));
+  return {
+    date: checkedIn.date,
+    location: firstValue(log?.location_name, log?.address, log?.cemetery_name, 'Memorial Site'),
+    note: firstValue(log?.note, log?.description, ''),
+    time: checkedIn.time,
+    type: firstValue(log?.type, 'visit'),
+  };
+};
+
+const nowStamp = addMinutes => {
+  const date = new Date(Date.now() + addMinutes * 60000);
+  const pad = number => String(number).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:00`;
+};
+
+const VisitLogScreen = ({ navigation, route }) => {
   const [tab, setTab] = useState(0);
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
+  const [visitNote, setVisitNote] = useState('');
+  const { data: bookings = [], isLoading: isBookingsLoading } = useGetClientBookingsQuery();
+  const bookingId = firstValue(route?.params?.bookingId, bookings?.[0]?.id, bookings?.[0]?.booking_id);
+  const { data: visitLogs = [], isLoading: isVisitLogsLoading } = useGetClientBookingVisitLogsQuery(bookingId, { skip: !bookingId });
+  const [createVisitLog, { isLoading: isCreatingVisitLog }] = useCreateClientBookingVisitLogMutation();
+  const visits = useMemo(() => visitLogs.map(mapVisitLog), [visitLogs]);
+  const isLoading = isBookingsLoading || isVisitLogsLoading;
+
+  const closeLogModal = () => {
+    setVisitNote('');
+    setIsLogModalOpen(false);
+  };
+
+  const handleLogVisit = async () => {
+    if (!bookingId) {
+      closeLogModal();
+      showToast('Visit Log', 'No booking found for visit log.');
+      return;
+    }
+
+    try {
+      await createVisitLog({
+        bookingId,
+        body: {
+          checked_in_at: nowStamp(0),
+          checked_out_at: nowStamp(20),
+          latitude: 0,
+          longitude: 0,
+          note: visitNote.trim(),
+        },
+      }).unwrap();
+      showToast('Visit logged successfully');
+      closeLogModal();
+    } catch (error) {
+      showToast('Visit Log', error?.message || 'Unable to log visit.');
+    }
+  };
 
   return (
     <ScreenWrapper
@@ -49,7 +100,7 @@ const VisitLogScreen = ({ navigation }) => {
       <View style={styles.headerContent}>
         <View style={styles.statsRow}>
           <StatCard label="Total Visits" value={`${visits.length} visits`} />
-          <StatCard label="Last Visit" value={visits[0].date} />
+          <StatCard label="Last Visit" value={visits[0]?.date || '-'} />
         </View>
         <LineBreak height={2.58} />
         <View style={styles.tabs}>
@@ -63,7 +114,7 @@ const VisitLogScreen = ({ navigation }) => {
         useBackgroundImage={false}
         style={styles.contentScroll}
         contentContainerStyle={styles.content}>
-        {tab === 0 ? <Timeline /> : <MapView />}
+        {isLoading ? <StateText text="Loading visit logs..." /> : tab === 0 ? <Timeline visits={visits} /> : <MapView visits={visits} />}
       </ScreenWrapper>
       {tab === 0 ? (
         <TouchableOpacity
@@ -75,7 +126,11 @@ const VisitLogScreen = ({ navigation }) => {
       ) : null}
       <LogVisitModal
         visible={isLogModalOpen}
-        onClose={() => setIsLogModalOpen(false)}
+        isSubmitting={isCreatingVisitLog}
+        note={visitNote}
+        onChangeNote={setVisitNote}
+        onClose={closeLogModal}
+        onSubmit={handleLogVisit}
       />
     </ScreenWrapper>
   );
@@ -99,8 +154,15 @@ const TabItem = ({ active, icon, label, onPress }) => (
   </TouchableOpacity>
 );
 
-const Timeline = () => (
+const StateText = ({ text }) => (
+  <GlassCard contentStyle={styles.emptyCard}>
+    <AppText style={styles.emptyText}>{text}</AppText>
+  </GlassCard>
+);
+
+const Timeline = ({ visits }) => (
   <View>
+    {!visits.length ? <StateText text="No visit logs found." /> : null}
     {visits.map((visit, index) => {
       const isLast = index === visits.length - 1;
       const isService = visit.type === 'service';
@@ -140,7 +202,9 @@ const Timeline = () => (
   </View>
 );
 
-const MapView = () => (
+const MapView = ({ visits }) => {
+  const latest = visits?.[0] || {};
+  return (
   <View>
     <View style={styles.mapCard}>
       <View style={styles.mapCircleLarge} />
@@ -148,7 +212,7 @@ const MapView = () => (
       <View style={styles.mapMarker}>
         <AppIcon name="location-on" color={AppColors.memorialCard} size={40} />
         <View style={styles.mapLabel}>
-          <AppText style={styles.mapLabelText}>Memorial Gardens</AppText>
+          <AppText style={styles.mapLabelText}>{latest.location || 'Memorial Site'}</AppText>
         </View>
       </View>
     </View>
@@ -156,7 +220,7 @@ const MapView = () => (
     <GlassCard contentStyle={styles.locationCard}>
       <AppText style={styles.locationTitle}>Location Details</AppText>
       <LineBreak height={2.58} />
-      <LocationRow label="Name" value="Memorial Gardens" />
+      <LocationRow label="Name" value={latest.location || 'Memorial Site'} />
       <LocationRow label="Section" value="Section B" />
       <LocationRow label="Plot" value="42B" />
       <LineBreak height={2.58} />
@@ -165,7 +229,8 @@ const MapView = () => (
       </AppButton>
     </GlassCard>
   </View>
-);
+  );
+};
 
 const LocationRow = ({ label, value }) => (
   <View style={styles.locationRow}>
@@ -174,7 +239,7 @@ const LocationRow = ({ label, value }) => (
   </View>
 );
 
-const LogVisitModal = ({ onClose, visible }) => (
+const LogVisitModal = ({ isSubmitting, note, onChangeNote, onClose, onSubmit, visible }) => (
   <Modal
     transparent
     animationType="fade"
@@ -197,14 +262,16 @@ const LogVisitModal = ({ onClose, visible }) => (
         <LineBreak height={1.6} />
         <TextInput
           multiline
+          value={note}
+          onChangeText={onChangeNote}
           placeholder="Add a note about your visit..."
           placeholderTextColor={AppColors.homeTextMuted}
           style={styles.visitNoteInput}
         />
         <LineBreak height={2.4} />
         <View style={styles.modalButtons}>
-          <TouchableOpacity activeOpacity={0.82} onPress={onClose} style={styles.logButton}>
-            <AppText style={styles.logButtonText}>Log Visit</AppText>
+          <TouchableOpacity activeOpacity={0.82} disabled={isSubmitting} onPress={onSubmit} style={styles.logButton}>
+            <AppText style={styles.logButtonText}>{isSubmitting ? 'Logging...' : 'Log Visit'}</AppText>
           </TouchableOpacity>
           <TouchableOpacity activeOpacity={0.82} onPress={onClose} style={styles.cancelButton}>
             <AppText style={styles.cancelButtonText}>Cancel</AppText>
@@ -230,6 +297,8 @@ const styles = StyleSheet.create({
   tabTextActive: { color: AppColors.white },
   contentScroll: { backgroundColor: 'transparent', flex: 1 },
   content: { padding: responsiveWidth(5.8), paddingBottom: responsiveHeight(10) },
+  emptyCard: { alignItems: 'center', backgroundColor: AppColors.memorialCard, borderColor: AppColors.homeBorder, padding: responsiveWidth(5) },
+  emptyText: { color: AppColors.homeTextMuted, fontSize: responsiveFontSize(1.3), textAlign: 'center' },
   timelineRow: { flexDirection: 'row' },
   timelineRail: { alignItems: 'center', width: responsiveWidth(10) },
   timelineIcon: { alignItems: 'center', backgroundColor: AppColors.white, borderRadius: responsiveWidth(5), height: responsiveWidth(10), justifyContent: 'center', width: responsiveWidth(10) },

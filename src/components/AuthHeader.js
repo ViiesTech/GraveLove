@@ -16,12 +16,14 @@ const AuthHeader = ({ subtitle, title }) => (
       style={styles.logo}
       resizeMode="cover"
     />
-    <LineBreak height={3} />
+    <LineBreak height={1} />
     <AppText style={styles.title}>{title}</AppText>
     {subtitle ? (
       <>
         <LineBreak height={1} />
-        <AppText variant="bodyDim" style={styles.subtitle}>{subtitle}</AppText>
+        <AppText variant="bodyDim" style={styles.subtitle}>
+          {subtitle}
+        </AppText>
       </>
     ) : null}
   </View>

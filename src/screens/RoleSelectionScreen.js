@@ -26,7 +26,10 @@ const RoleSelectionScreen = ({ navigation }) => {
 
   return (
     <ScreenWrapper isGradient contentContainerStyle={styles.container}>
-      <AppBackButton onPress={() => navigation.goBack()} style={styles.backButton} />
+      <AppBackButton
+        onPress={() => navigation.goBack()}
+        style={styles.backButton}
+      />
 
       <Image
         source={AppAssets.images.authLogo}
@@ -34,13 +37,14 @@ const RoleSelectionScreen = ({ navigation }) => {
         resizeMode="cover"
       />
 
-      <LineBreak height={2.45} />
+      <LineBreak height={1.5} />
       <View style={styles.content}>
         <View style={styles.introWrap}>
-          <LineBreak height={3} />
           <AppText style={styles.welcomeText}>Welcome to Grave Love</AppText>
           <LineBreak height={1} />
-          <AppText variant="bodyDim" style={styles.subtitle}>Sign in as...</AppText>
+          <AppText variant="bodyDim" style={styles.subtitle}>
+            Sign in as...
+          </AppText>
         </View>
 
         <LineBreak height={12} />
@@ -59,7 +63,8 @@ const RoleSelectionScreen = ({ navigation }) => {
               onPress={() =>
                 navigateRoot('VendorAuth', { screen: 'VendorSignup' })
               }
-              style={styles.vendorButton}>
+              style={styles.vendorButton}
+            >
               Vendor
             </AppButton>
           </View>
@@ -99,7 +104,7 @@ const styles = StyleSheet.create({
     fontSize: responsiveFontSize(1.75),
   },
   subtitle: {
-    color: AppColors.goldDim,
+    color: AppColors.signInAs,
     fontSize: responsiveFontSize(1.52),
   },
   selectionWrap: {
@@ -108,7 +113,7 @@ const styles = StyleSheet.create({
   },
   questionText: {
     color: AppColors.gold,
-    fontSize: responsiveFontSize(1.75),
+    fontSize: responsiveFontSize(1.9),
     textAlign: 'center',
   },
   buttonsWrap: {

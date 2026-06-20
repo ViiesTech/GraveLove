@@ -6,7 +6,9 @@ import AppText from '../../../components/AppText';
 import GlassCard from '../../../components/GlassCard';
 import LineBreak from '../../../components/LineBreak';
 import ScreenWrapper from '../../../components/ScreenWrapper';
+import { useCreateClientMemorialTributeMutation } from '../../../redux/api/userApi';
 import { AppColors } from '../../../utils/AppColors';
+import { showToast } from '../../../utils/Toast';
 import {
   responsiveFontSize,
   responsiveHeight,
@@ -16,8 +18,33 @@ import {
 const inspirations = ['"I remember when..."', '"Thank you for teaching me..."', '"Your kindness and..."', '"I will always cherish..."'];
 const guidelines = ['Be respectful and compassionate', 'Share positive memories and stories', 'Avoid controversial or sensitive topics', 'Keep the focus on honoring the deceased'];
 
-const AddTributeScreen = ({ navigation }) => {
+const AddTributeScreen = ({ navigation, route }) => {
+  const memorialId = route?.params?.memorialId;
   const [tribute, setTribute] = useState('');
+  const [createTribute, { isLoading }] = useCreateClientMemorialTributeMutation();
+
+  const handleShareTribute = async () => {
+    if (!memorialId) {
+      showToast('Memorial missing', 'Please open a memorial before adding a tribute.');
+      return;
+    }
+
+    if (!tribute.trim()) {
+      showToast('Tribute missing', 'Please write a tribute message.');
+      return;
+    }
+
+    try {
+      const response = await createTribute({
+        memorialId,
+        body: { body: tribute.trim(), visibility: 'family' },
+      }).unwrap();
+      showToast(response?.message || 'Tribute shared');
+      navigation.goBack();
+    } catch (error) {
+      showToast('Tribute failed', error?.message || 'Unable to share tribute right now.');
+    }
+  };
 
   return (
     <ScreenWrapper isKeyboardAvoiding isScroll contentContainerStyle={styles.content}>
@@ -58,7 +85,7 @@ const AddTributeScreen = ({ navigation }) => {
       <LineBreak height={3.2} />
       <ListCard title="Tribute Guidelines" items={guidelines} />
       <LineBreak height={4} />
-      <AppButton style={styles.primaryButton} onPress={() => navigation.goBack()}>
+      <AppButton isLoading={isLoading} style={styles.primaryButton} onPress={handleShareTribute}>
         Share Tribute
       </AppButton>
       <LineBreak height={1.2} />
@@ -84,13 +111,13 @@ const styles = StyleSheet.create({
   back: { width: responsiveWidth(8), height: responsiveWidth(8), justifyContent: 'center' },
   title: { color: AppColors.white, fontSize: responsiveFontSize(2.55), fontWeight: '700' },
   subtitle: { color: AppColors.homeTextMuted, fontSize: responsiveFontSize(1.45), marginTop: responsiveHeight(0.6) },
-  infoCard: { flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.06)', borderColor: AppColors.homeBorder, borderRadius: 16 },
+  infoCard: { flexDirection: 'row', backgroundColor: '#042F67', borderColor: AppColors.homeBorder, borderRadius: 16 },
   flex: { flex: 1, marginLeft: responsiveWidth(4) },
   cardTitle: { color: AppColors.white, fontSize: responsiveFontSize(1.62), fontWeight: '700' },
   bodyText: { color: AppColors.homeTextMuted, fontSize: responsiveFontSize(1.16), lineHeight: responsiveFontSize(1.72), marginTop: responsiveHeight(0.7) },
-  textArea: { minHeight: responsiveHeight(20), padding: responsiveWidth(4), borderWidth: 0.5, borderColor: AppColors.homeBorder, borderRadius: 16, color: AppColors.white, fontSize: responsiveFontSize(1.45), textAlignVertical: 'top', backgroundColor: 'rgba(255,255,255,0.06)' },
+  textArea: { minHeight: responsiveHeight(20), padding: responsiveWidth(4), borderWidth: 0.5, borderColor: AppColors.homeBorder, borderRadius: 16, color: AppColors.white, fontSize: responsiveFontSize(1.45), textAlignVertical: 'top', backgroundColor: '#042F67' },
   counter: { color: AppColors.homeTextMuted, fontSize: responsiveFontSize(1.12) },
-  listCard: { backgroundColor: 'rgba(255,255,255,0.06)', borderColor: AppColors.homeBorder, borderRadius: 16 },
+  listCard: { backgroundColor: '#042F67', borderColor: AppColors.homeBorder, borderRadius: 16 },
   listItem: { color: AppColors.homeTextMuted, fontSize: responsiveFontSize(1.25), lineHeight: responsiveFontSize(2.1), marginBottom: responsiveHeight(0.7) },
   primaryButton: { backgroundColor: AppColors.onboardingButton, borderRadius: 30 },
   footerText: { color: AppColors.homeTextMuted, fontSize: responsiveFontSize(1.12), textAlign: 'center' },

@@ -7,6 +7,10 @@ import AppText from '../../../components/AppText';
 import GlassCard from '../../../components/GlassCard';
 import LineBreak from '../../../components/LineBreak';
 import ScreenWrapper from '../../../components/ScreenWrapper';
+import {
+  useGetClientBookingDetailQuery,
+  useGetClientBookingVisitLogsQuery,
+} from '../../../redux/api/userApi';
 import { AppAssets } from '../../../utils/AppAssets';
 import { AppColors } from '../../../utils/AppColors';
 import {
@@ -15,15 +19,84 @@ import {
   responsiveWidth,
 } from '../../../utils/Responsive_Dimensions';
 
-const timeline = [
+const fallbackTimeline = [
   ['Booking Confirmed', 'Oct 28, 9:00 AM', true],
   ['Vendor Assigned', 'Oct 28, 9:15 AM', true],
   ['Service In Progress', 'Started: 10:05 AM', true],
   ['Service Completed', 'Estimated: 11:30 AM', false],
 ];
 
+const firstValue = (...values) =>
+  values.find(value => value !== undefined && value !== null && value !== '');
+
+const pickService = booking =>
+  firstValue(
+    booking?.service_name,
+    booking?.vendor_service?.name,
+    booking?.service?.name,
+    booking?.service?.service_name,
+    booking?.title,
+    'Service Booking',
+  );
+
+const pickVendor = booking =>
+  firstValue(
+    booking?.vendor_name,
+    booking?.vendor?.vendor_business?.business_name,
+    booking?.vendor?.business_name,
+    booking?.vendor?.name,
+    booking?.provider,
+    'Vendor unavailable',
+  );
+
+const pickLocation = booking =>
+  firstValue(
+    booking?.location,
+    booking?.cemetery_name,
+    booking?.memorial?.cemetery_name,
+    booking?.memorial?.address,
+    booking?.memorial?.location,
+    'Location unavailable',
+  );
+
+const pickGrave = booking =>
+  firstValue(
+    booking?.grave_number,
+    booking?.plot_number,
+    booking?.memorial?.grave_number,
+    booking?.memorial?.plot_number,
+    '-',
+  );
+
+const pickScheduled = booking =>
+  firstValue(
+    booking?.formatted_date,
+    booking?.date_time,
+    booking?.scheduled_at,
+    booking?.scheduled_date,
+    booking?.booking_date,
+    booking?.date,
+    '-',
+  );
+
+const pickAmount = booking =>
+  firstValue(booking?.amount, booking?.total_amount, booking?.price, '$0');
+
+const mapVisitLog = log => [
+  firstValue(log?.title, log?.status_label, log?.status, 'Visit Update'),
+  firstValue(log?.time, log?.created_at_human, log?.created_at, log?.notes, ''),
+  true,
+];
+
 const ViewBookingDetailsScreen = ({ navigation, route }) => {
-  const isCompleted = route?.params?.isCompleted || false;
+  const routeBooking = route?.params?.booking || {};
+  const bookingId = firstValue(route?.params?.bookingId, routeBooking?.id, routeBooking?.booking_id);
+  const { data: bookingDetail } = useGetClientBookingDetailQuery(bookingId, { skip: !bookingId });
+  const { data: visitLogs = [] } = useGetClientBookingVisitLogsQuery(bookingId, { skip: !bookingId });
+  const booking = bookingDetail || routeBooking;
+  const status = firstValue(booking?.status_label, booking?.status, routeBooking?.status, 'Pending');
+  const isCompleted = route?.params?.isCompleted ?? status?.toString().toLowerCase().includes('complete');
+  const timeline = visitLogs.length ? visitLogs.map(mapVisitLog) : fallbackTimeline;
 
   return (
     <ScreenWrapper isScroll contentContainerStyle={styles.scrollContent}>
@@ -34,13 +107,13 @@ const ViewBookingDetailsScreen = ({ navigation, route }) => {
         subtitle={isCompleted ? 'Oct 25, 2025 at 12:30 PM' : 'Track your service in real-time'}
       />
       <View style={styles.content}>
-        {isCompleted ? <CompletedCard /> : <ProgressCard />}
+        {isCompleted ? <CompletedCard booking={booking} /> : <ProgressCard booking={booking} />}
         <LineBreak height={2.4} />
-        {isCompleted ? <BeforeAfterSection /> : <TimelineSection />}
+        {isCompleted ? <BeforeAfterSection /> : <TimelineSection timeline={timeline} />}
         <LineBreak height={2.4} />
-        {isCompleted ? <VendorNoteCard /> : <VendorInfoCard />}
+        {isCompleted ? <VendorNoteCard booking={booking} /> : <VendorInfoCard booking={booking} />}
         <LineBreak height={2.4} />
-        <LocationCard isCompleted={isCompleted} />
+        <LocationCard booking={booking} isCompleted={isCompleted} />
         <LineBreak height={3} />
         {isCompleted ? (
           <>
@@ -63,46 +136,46 @@ const ViewBookingDetailsScreen = ({ navigation, route }) => {
   );
 };
 
-const ProgressCard = () => (
+const ProgressCard = ({ booking }) => (
   <GlassCard contentStyle={styles.card}>
     <View style={styles.cardHeader}>
       <View style={styles.statusPill}>
         <AppIcon name="sync" color={AppColors.white} size={14} />
         <AppText style={styles.statusText}>In Progress</AppText>
       </View>
-      <AppText style={styles.miniText}>Service ID: #MC912</AppText>
+      <AppText style={styles.miniText}>Service ID: #{firstValue(booking?.id, booking?.booking_id, 'MC912')}</AppText>
     </View>
     <LineBreak height={2.4} />
-    <AppText style={styles.cardTitle}>Grave Cleaning</AppText>
+    <AppText style={styles.cardTitle}>{pickService(booking)}</AppText>
     <LineBreak height={1.6} />
-    <DetailLine icon="location-on" text="Green Meadows Cemetery" />
-    <DetailLine icon="access-time" text="Oct 28, 2025 at 10:00 AM" />
-    <DetailLine icon="push-pin" text="Plot C, Grave #45" />
+    <DetailLine icon="location-on" text={pickLocation(booking)} />
+    <DetailLine icon="access-time" text={pickScheduled(booking)} />
+    <DetailLine icon="push-pin" text={pickGrave(booking)} />
     <LineBreak height={2.2} />
     <View style={styles.innerPanel}>
       <AppText style={styles.muted}>Estimated Completion</AppText>
-      <AppText style={styles.cardTitleSmall}>11:30 AM</AppText>
+      <AppText style={styles.cardTitleSmall}>{firstValue(booking?.estimated_completion, booking?.scheduled_time, '11:30 AM')}</AppText>
     </View>
   </GlassCard>
 );
 
-const CompletedCard = () => (
+const CompletedCard = ({ booking }) => (
   <GlassCard contentStyle={styles.card}>
     <AppText style={styles.cardTitle}>Service Details</AppText>
     <LineBreak height={2.2} />
-    <DetailRow label="Service" value="Grave Cleaning" />
-    <DetailRow label="Vendor" value="Garden Care Services" />
-    <DetailRow label="Location" value={'Green Meadows Cemetery\nPlot C, Grave #45'} />
-    <DetailRow label="Scheduled" value="Oct 25, 2025 at 11:00 AM" />
+    <DetailRow label="Service" value={pickService(booking)} />
+    <DetailRow label="Vendor" value={pickVendor(booking)} />
+    <DetailRow label="Location" value={`${pickLocation(booking)}\n${pickGrave(booking)}`} />
+    <DetailRow label="Scheduled" value={pickScheduled(booking)} />
     <View style={styles.divider} />
     <View style={styles.totalRow}>
       <AppText style={styles.cardTitleSmall}>Total Paid</AppText>
-      <AppText style={styles.cardTitleSmall}>$45.00</AppText>
+      <AppText style={styles.cardTitleSmall}>{pickAmount(booking)}</AppText>
     </View>
   </GlassCard>
 );
 
-const TimelineSection = () => (
+const TimelineSection = ({ timeline }) => (
   <GlassCard contentStyle={styles.card}>
     <AppText style={styles.cardTitle}>Service Timeline</AppText>
     <LineBreak height={2.2} />
@@ -137,7 +210,7 @@ const BeforeAfterSection = () => (
   </View>
 );
 
-const VendorInfoCard = () => (
+const VendorInfoCard = ({ booking }) => (
   <GlassCard contentStyle={styles.card}>
     <View style={styles.cardHeader}>
       <AppText style={styles.muted}>Assigned Vendor</AppText>
@@ -147,8 +220,8 @@ const VendorInfoCard = () => (
     <View style={styles.vendorRow}>
       <View style={styles.avatar} />
       <View style={styles.flex}>
-        <AppText style={styles.cardTitle}>John Smith</AppText>
-        <AppText style={styles.miniText}>Professional Memorial Caretaker</AppText>
+        <AppText style={styles.cardTitle}>{pickVendor(booking)}</AppText>
+        <AppText style={styles.miniText}>{firstValue(booking?.vendor?.role, booking?.vendor?.business_type, 'Professional Memorial Caretaker')}</AppText>
       </View>
     </View>
     <LineBreak height={2.1} />
@@ -159,7 +232,7 @@ const VendorInfoCard = () => (
   </GlassCard>
 );
 
-const VendorNoteCard = () => (
+const VendorNoteCard = ({ booking }) => (
   <GlassCard contentStyle={styles.card}>
     <View style={styles.inlineTitle}>
       <AppIcon name="chat-bubble-outline" color={AppColors.white} size={18} />
@@ -167,17 +240,17 @@ const VendorNoteCard = () => (
     </View>
     <LineBreak height={1.6} />
     <AppText style={styles.bodyText}>
-      Service completed successfully. The gravestone has been thoroughly cleaned and fresh flowers have been placed. The surrounding area has been tidied up as well.
+      {firstValue(booking?.vendor_note, booking?.completion_note, booking?.notes, 'Service completed successfully. The gravestone has been thoroughly cleaned and fresh flowers have been placed. The surrounding area has been tidied up as well.')}
     </AppText>
   </GlassCard>
 );
 
-const LocationCard = ({ isCompleted }) => (
+const LocationCard = ({ booking, isCompleted }) => (
   <GlassCard contentStyle={styles.locationCard}>
     <AppIcon name="location-on" color={AppColors.white} size={40} />
     <LineBreak height={1.1} />
     <AppText style={styles.cardTitle}>{isCompleted ? 'Location' : 'Live Location Tracking'}</AppText>
-    <AppText style={styles.mutedCenter}>{isCompleted ? 'Green Meadows Cemetery\nPlot C, Grave #45' : 'Vendor is at the cemetery'}</AppText>
+    <AppText style={styles.mutedCenter}>{isCompleted ? `${pickLocation(booking)}\n${pickGrave(booking)}` : firstValue(booking?.live_location_status, 'Vendor is at the cemetery')}</AppText>
   </GlassCard>
 );
 

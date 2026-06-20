@@ -1,5 +1,6 @@
 import React from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import AppButton from '../../../components/AppButton';
 import AppIcon from '../../../components/AppIcon';
 import AppText from '../../../components/AppText';
 import GlassCard from '../../../components/GlassCard';
@@ -12,7 +13,17 @@ import {
   responsiveWidth,
 } from '../../../utils/Responsive_Dimensions';
 
-const BookingServiceStep4 = ({ navigation }) => (
+const BookingServiceStep4 = ({ navigation }) => {
+  const summary = {
+    service: 'Memorial Upkeep',
+    cemetery: 'Green Meadows',
+    graveNumber: 'Plot C, #45',
+    date: '10/29/2025',
+    time: '10:00 AM',
+    vendor: 'Garden Care Services',
+  };
+
+  return (
   <ScreenWrapper
     style={styles.screen}
     contentContainerStyle={styles.content}>
@@ -27,22 +38,25 @@ const BookingServiceStep4 = ({ navigation }) => (
     </AppText>
     <LineBreak height={3.43} />
     <GlassCard contentStyle={styles.summaryCard}>
-      <SummaryLine label="Service" value="Memorial Upkeep" />
-      <SummaryLine label="Cemetery" value="a" />
-      <SummaryLine label="Grave Number" value="a" />
-      <SummaryLine label="Date" value="10/29/2025" />
-      <SummaryLine label="Time" value="10:00 AM" />
-      <SummaryLine label="Vendor" value="Garden Care Services" />
+      <SummaryLine label="Service" value={summary.service} />
+      <SummaryLine label="Cemetery" value={summary.cemetery} />
+      <SummaryLine label="Grave Number" value={summary.graveNumber} />
+      <SummaryLine label="Date" value={summary.date} />
+      <SummaryLine label="Time" value={summary.time} />
+      <SummaryLine label="Vendor" value={summary.vendor} />
     </GlassCard>
     <LineBreak height={3.43} />
-    <TouchableOpacity
-      activeOpacity={0.82}
-      onPress={() => navigation.navigate('UserHome')}
+    <AppButton
+      onPress={() => navigation.reset({
+        index: 0,
+        routes: [{ name: 'UserTabs', params: { screen: 'UserHome' } }],
+      })}
       style={styles.button}>
-      <AppText style={styles.buttonText}>Back to Home</AppText>
-    </TouchableOpacity>
+      Back to Home
+    </AppButton>
   </ScreenWrapper>
-);
+  );
+};
 
 const SummaryLine = ({ label, value }) => (
   <View style={styles.summaryLine}>
@@ -75,13 +89,13 @@ const styles = StyleSheet.create({
   },
   title: {
     color: AppColors.white,
-    fontSize: responsiveFontSize(1.35),
-    fontWeight: '600',
+    fontSize: responsiveFontSize(1.85),
+    fontWeight: '700',
   },
   subtitle: {
-    color: AppColors.homeTextMuted,
-    fontSize: responsiveFontSize(1.3),
-    lineHeight: responsiveHeight(2.35),
+    color: AppColors.white,
+    fontSize: responsiveFontSize(1.42),
+    lineHeight: responsiveFontSize(2.05),
     textAlign: 'center',
   },
   summaryCard: {
@@ -99,24 +113,17 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     color: AppColors.white,
-    fontSize: responsiveFontSize(1.25),
+    fontSize: responsiveFontSize(1.38),
   },
   summaryValue: {
     color: AppColors.white,
     flex: 1,
-    fontSize: responsiveFontSize(1.25),
+    fontSize: responsiveFontSize(1.38),
     textAlign: 'right',
   },
   button: {
-    alignItems: 'center',
     backgroundColor: AppColors.homeActionCard,
-    borderRadius: 30,
-    paddingVertical: responsiveHeight(1.35),
     width: '100%',
-  },
-  buttonText: {
-    color: AppColors.black,
-    fontSize: responsiveFontSize(1.12),
   },
 });
 

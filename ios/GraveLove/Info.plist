@@ -35,6 +35,12 @@
 	</dict>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string></string>
+	<key>NSCameraUsageDescription</key>
+	<string>GraveLove needs camera access to update your profile photo.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>GraveLove needs photo library access to choose your profile photo.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>GraveLove needs permission to save selected photos when required.</string>
 	<key>RCTNewArchEnabled</key>
 	<true/>
 	<key>UIAppFonts</key>

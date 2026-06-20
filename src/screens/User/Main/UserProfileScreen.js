@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 import AppButton from '../../../components/AppButton';
 import AppIcon from '../../../components/AppIcon';
 import AppImageHeader from '../../../components/AppImageHeader';
@@ -7,24 +7,30 @@ import AppText from '../../../components/AppText';
 import GlassCard from '../../../components/GlassCard';
 import LineBreak from '../../../components/LineBreak';
 import ScreenWrapper from '../../../components/ScreenWrapper';
+import { useLogoutMutation } from '../../../redux/api/authApi';
+import {
+  useGetClientMemorialsQuery,
+  useGetClientProfileQuery,
+} from '../../../redux/api/userApi';
 import { AppAssets } from '../../../utils/AppAssets';
 import { AppColors } from '../../../utils/AppColors';
+import { showToast } from '../../../utils/Toast';
 import {
   responsiveFontSize,
   responsiveHeight,
   responsiveWidth,
 } from '../../../utils/Responsive_Dimensions';
 
-const accountRows = [
-  ['email', 'Email Address', 'sarah.thompson@email.com'],
-  ['phone', 'Phone Number', '+1 (555) 123-4567'],
-];
+const firstValue = (...values) =>
+  values.find(value => value !== undefined && value !== null && value !== '');
 
-const linkedMemorials = [
-  ['Robert James Thompson', 'Father'],
-  ['Margaret Anne Thompson', 'Mother'],
-  ['Michael David Thompson', 'Brother'],
-];
+const profileImageSource = profile => {
+  const image = profile?.profile_picture || profile?.avatar || profile?.image;
+  if (typeof image === 'string' && image.trim()) {
+    return { uri: image.startsWith('http') ? image : `https://grave-love.predemo.site/storage/${image}` };
+  }
+  return AppAssets.images.profilePic;
+};
 
 const settingsRows = [
   ['notifications-none', 'Notification Settings', 'UserAlerts'],
@@ -33,7 +39,91 @@ const settingsRows = [
   ['help-outline', 'Help & Support', 'HelpSupport'],
 ];
 
+const staticLinkedMemorials = [
+  {
+    id: 'm1',
+    name: 'Robert James Thompson',
+    relationship: 'Father',
+  },
+  {
+    id: 'm2',
+    name: 'Margaret Anne Thompson',
+    relationship: 'Mother',
+  },
+  {
+    id: 'm3',
+    name: 'Michael David Thompson',
+    relationship: 'Brother',
+  },
+];
+
+const memorialDates = memorial => {
+  const birth = firstValue(memorial?.date_of_birth, memorial?.dob);
+  const passing = firstValue(memorial?.date_of_passing, memorial?.dod, memorial?.date_of_death);
+
+  if (!birth && !passing) {
+    return '1945 - 2023';
+  }
+
+  return `${birth || '-'} - ${passing || '-'}`;
+};
+
+const memorialLocation = memorial => firstValue(
+  memorial?.cemetery_name,
+  memorial?.address,
+  memorial?.location,
+  'Forest Lawn Memorial Park',
+);
+
 const UserProfileScreen = ({ navigation }) => {
+  const [logout] = useLogoutMutation();
+  const { data: profileData, isLoading: isProfileLoading, isError: isProfileError } = useGetClientProfileQuery();
+  const { data: memorialsData = [], isLoading: isMemorialsLoading } = useGetClientMemorialsQuery();
+  const profile = profileData?.user || profileData?.profile || profileData || {};
+  const profileName = firstValue(profile?.full_name, profile?.name, 'User');
+  const profileEmail = firstValue(profile?.email, 'Email unavailable');
+  const profilePhone = firstValue(
+    profile?.phone_number,
+    profile?.phone,
+    'Phone unavailable',
+  );
+  const accountRows = [
+    ['email', 'Email Address', profileEmail],
+    ['phone', 'Phone Number', profilePhone],
+  ];
+  const linkedMemorials = memorialsData.length ? memorialsData : staticLinkedMemorials;
+
+  const navigateAuth = () => {
+    let rootNavigation = navigation;
+
+    while (rootNavigation.getParent?.()) {
+      rootNavigation = rootNavigation.getParent();
+    }
+
+    rootNavigation.reset({
+      index: 0,
+      routes: [{ name: 'AuthStack' }],
+    });
+  };
+
+  const handleLogout = async () => {
+    try {
+      const response = await logout({ role: 'user' }).unwrap();
+      showToast('Logged out', response?.message || 'You have been logged out.');
+    } catch (error) {
+      showToast('Logged out', error?.message || 'Session cleared.');
+    } finally {
+      navigateAuth();
+    }
+  };
+
+  const confirmLogout = () => {
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Logout', style: 'destructive', onPress: handleLogout },
+    ]);
+  };
+
   const openRoute = route => {
     if (route === 'PrivacySecurity') {
       navigation.navigate('PrivacySecurity');
@@ -52,12 +142,15 @@ const UserProfileScreen = ({ navigation }) => {
         height={responsiveHeight(25.8)}
       />
 
+      {isProfileLoading ? <EmptyState text="Loading profile..." /> : null}
+      {isProfileError ? <EmptyState text="Unable to load profile." /> : null}
+
       <View style={styles.profilePanel}>
         <View style={styles.identityRow}>
-          <Image source={AppAssets.images.profilePic} style={styles.avatar} />
+          <Image source={profileImageSource(profile)} style={styles.avatar} />
           <View style={styles.identityCopy}>
-            <AppText numberOfLines={1} style={styles.name}>Sarah Thompson</AppText>
-            <AppText numberOfLines={1} style={styles.email}>sarah.thompson@email.com</AppText>
+            <AppText numberOfLines={1} style={styles.name}>{profileName}</AppText>
+            <AppText numberOfLines={1} style={styles.email}>{profileEmail}</AppText>
           </View>
         </View>
         <LineBreak height={1.72} />
@@ -77,13 +170,12 @@ const UserProfileScreen = ({ navigation }) => {
 
       <Section title="Linked Memorials" />
       <GlassCard contentStyle={styles.card}>
-        {linkedMemorials.map((row, index) => (
-          <InfoRow
-            key={row[0]}
-            icon="favorite-border"
-            title={`${row[0]} (${row[1]})`}
-            value="Tap to view memorial profile"
-            onPress={() => navigation.navigate('MemorialProfile')}
+        {isMemorialsLoading ? <EmptyState text="Loading memorials..." compact /> : null}
+        {!isMemorialsLoading && linkedMemorials.map((memorial, index) => (
+          <LinkedMemorialRow
+            key={memorial?.id || `${memorial?.name}-${index}`}
+            memorial={memorial}
+            onPress={() => navigation.navigate('MemorialProfile', { memorial })}
             showDivider={index < linkedMemorials.length - 1}
           />
         ))}
@@ -102,13 +194,22 @@ const UserProfileScreen = ({ navigation }) => {
         ))}
       </GlassCard>
 
-      <TouchableOpacity activeOpacity={0.82} style={styles.logoutButton}>
+      <TouchableOpacity
+        activeOpacity={0.82}
+        onPress={confirmLogout}
+        style={styles.logoutButton}>
         <AppIcon name="logout" color="#EF5350" size={20} />
         <AppText style={styles.logoutText}>Log Out</AppText>
       </TouchableOpacity>
     </ScreenWrapper>
   );
 };
+
+const EmptyState = ({ compact = false, text }) => (
+  <GlassCard contentStyle={[styles.emptyCard, compact && styles.emptyCardCompact]}>
+    <AppText style={styles.emptyText}>{text}</AppText>
+  </GlassCard>
+);
 
 const Section = ({ title }) => (
   <>
@@ -134,9 +235,46 @@ const InfoRow = ({ icon, onPress, showDivider, title, value }) => (
   </TouchableOpacity>
 );
 
+const LinkedMemorialRow = ({ memorial, onPress, showDivider }) => {
+  const name = firstValue(memorial?.full_name, memorial?.name, memorial?.memorial_name, 'Memorial');
+  const relation = firstValue(memorial?.relationship, memorial?.relation, memorial?.relation_to_user, 'Loved One');
+
+  return (
+    <TouchableOpacity activeOpacity={0.82} onPress={onPress}>
+      <View style={styles.infoRow}>
+        <View style={styles.iconCircle}>
+          <AppIcon name="favorite-border" color={AppColors.white} size={20} />
+        </View>
+        <View style={styles.infoCopy}>
+          <AppText numberOfLines={1} style={styles.infoTitle}>{`${name} (${relation})`}</AppText>
+          <AppText numberOfLines={1} style={styles.infoValue}>{memorialDates(memorial)}</AppText>
+          <AppText numberOfLines={1} style={styles.memorialLocation}>{memorialLocation(memorial)}</AppText>
+        </View>
+        <AppIcon name="chevron-right" color={AppColors.homeTextMuted} size={22} />
+      </View>
+      {showDivider ? <View style={styles.divider} /> : null}
+    </TouchableOpacity>
+  );
+};
+
 const styles = StyleSheet.create({
   content: {
     paddingBottom: responsiveHeight(6),
+  },
+  emptyCard: {
+    alignItems: 'center',
+    marginHorizontal: responsiveWidth(5.8),
+    backgroundColor: AppColors.memorialCard,
+    borderColor: AppColors.homeBorder,
+  },
+  emptyCardCompact: {
+    marginHorizontal: 0,
+    borderWidth: 0,
+  },
+  emptyText: {
+    color: AppColors.homeTextMuted,
+    fontSize: responsiveFontSize(1.35),
+    textAlign: 'center',
   },
   profilePanel: {
     marginTop: -responsiveHeight(5),
@@ -215,6 +353,11 @@ const styles = StyleSheet.create({
   infoValue: {
     color: AppColors.homeTextMuted,
     fontSize: responsiveFontSize(1.25),
+    marginTop: responsiveHeight(0.35),
+  },
+  memorialLocation: {
+    color: AppColors.homeTextMuted,
+    fontSize: responsiveFontSize(1.08),
     marginTop: responsiveHeight(0.35),
   },
   divider: {

@@ -6,6 +6,10 @@ import AppText from '../../../components/AppText';
 import GlassCard from '../../../components/GlassCard';
 import LineBreak from '../../../components/LineBreak';
 import ScreenWrapper from '../../../components/ScreenWrapper';
+import {
+  useGetClientWalletQuery,
+  useGetClientWalletTransactionsQuery,
+} from '../../../redux/api/userApi';
 import { AppAssets } from '../../../utils/AppAssets';
 import { AppColors } from '../../../utils/AppColors';
 import {
@@ -14,14 +18,37 @@ import {
   responsiveWidth,
 } from '../../../utils/Responsive_Dimensions';
 
-const transactions = [
-  ['Flower Placement', 'Oct 30, 2025', '-60', false],
-  ['Hearts Purchase', 'Oct 20, 2025', '+200', true],
-  ['Grave Cleaning', 'Oct 15, 2025', '-45', false],
-];
+const firstValue = (...values) =>
+  values.find(value => value !== undefined && value !== null && value !== '');
+
+const mapTransaction = item => {
+  const amount = firstValue(item?.amount, item?.hearts, 0);
+  const numericAmount = Number(amount);
+  const isCredit = firstValue(item?.type, item?.transaction_type, '') === 'credit' || numericAmount > 0;
+
+  return [
+    firstValue(item?.title, item?.description, item?.service_name, 'Transaction'),
+    firstValue(item?.formatted_date, item?.created_at, item?.date, 'Date unavailable'),
+    `${numericAmount > 0 ? '+' : ''}${Number.isNaN(numericAmount) ? amount : numericAmount}`,
+    isCredit,
+  ];
+};
 
 const UserCoinsWalletScreen = ({ navigation }) => {
   const [tab, setTab] = useState(0);
+  const { data: walletData, isLoading: isWalletLoading, isError: isWalletError } = useGetClientWalletQuery();
+  const { data: transactionData = [], isLoading: isTransactionsLoading } = useGetClientWalletTransactionsQuery();
+  const transactions = transactionData.map(mapTransaction);
+  const wallet = {
+    balance: firstValue(
+      walletData?.balance,
+      walletData?.hearts,
+      walletData?.available_balance,
+      0,
+    ),
+    spent: firstValue(walletData?.month_spent, walletData?.spent_this_month, 0),
+    earned: firstValue(walletData?.month_earned, walletData?.earned_this_month, 0),
+  };
 
   return (
     <ScreenWrapper isScroll contentContainerStyle={styles.content}>
@@ -45,13 +72,24 @@ const UserCoinsWalletScreen = ({ navigation }) => {
           ))}
         </View>
         <LineBreak height={2.4} />
-        {tab === 0 ? <BalanceView navigation={navigation} onHistory={() => setTab(1)} /> : <HistoryView />}
+        {tab === 0 ? (
+          <BalanceView
+            isLoading={isWalletLoading || isTransactionsLoading}
+            isError={isWalletError}
+            navigation={navigation}
+            onHistory={() => setTab(1)}
+            transactions={transactions}
+            wallet={wallet}
+          />
+        ) : (
+          <HistoryView transactions={transactions} />
+        )}
       </View>
     </ScreenWrapper>
   );
 };
 
-const BalanceView = ({ navigation, onHistory }) => (
+const BalanceView = ({ isError, isLoading, navigation, onHistory, transactions, wallet }) => (
   <>
     <GlassCard contentStyle={styles.balanceCard}>
       <View style={styles.balanceTop}>
@@ -59,10 +97,10 @@ const BalanceView = ({ navigation, onHistory }) => (
           <AppText style={styles.muted}>Available Balance</AppText>
           <View style={styles.heartsRow}>
             <AppIcon name="favorite-border" color={AppColors.white} size={31} />
-            <AppText style={styles.hearts}>200</AppText>
+            <AppText style={styles.hearts}>{wallet.balance}</AppText>
             <AppText style={styles.heartsLabel}>Hearts</AppText>
           </View>
-          <AppText style={styles.muted}>≈ $200.00 USD</AppText>
+          <AppText style={styles.muted}>≈ ${wallet.balance}.00 USD</AppText>
         </View>
         <View style={styles.walletCircle}>
           <AppIcon name="account-balance-wallet" color={AppColors.themeColor} size={24} />
@@ -70,8 +108,8 @@ const BalanceView = ({ navigation, onHistory }) => (
       </View>
       <View style={styles.cardDivider} />
       <View style={styles.statRow}>
-        <Stat label="This Month Spent" value="45" />
-        <Stat label="This Month Earned" value="200" />
+        <Stat label="This Month Spent" value={`${wallet.spent}`} />
+        <Stat label="This Month Earned" value={`${wallet.earned}`} />
       </View>
     </GlassCard>
 
@@ -96,27 +134,47 @@ const BalanceView = ({ navigation, onHistory }) => (
         <AppText style={styles.viewAll}>View All</AppText>
       </TouchableOpacity>
     </View>
-    {transactions.slice(0, 3).map(item => <Transaction key={item[0]} item={item} />)}
+    {isLoading ? <EmptyState text="Loading wallet..." /> : null}
+    {isError ? <EmptyState text="Unable to load wallet." /> : null}
+    {!isLoading && !isError && !transactions.length ? <EmptyState text="No transactions found." /> : null}
+    {transactions.slice(0, 3).map(item => <Transaction key={`${item[0]}-${item[1]}`} item={item} />)}
   </>
 );
 
-const HistoryView = () => (
+const HistoryView = ({ transactions }) => (
   <View>
-    {transactions.map(item => <Transaction key={item[0]} item={item} />)}
+    <View style={styles.historyHeader}>
+      <AppText style={styles.sectionTitle}>All Transactions</AppText>
+      <AppText style={styles.historyCount}>{transactions.length} transactions</AppText>
+    </View>
+    {transactions.length ? (
+      transactions.map(item => <Transaction key={`${item[0]}-${item[1]}`} item={item} />)
+    ) : (
+      <EmptyState text="No transactions found." />
+    )}
   </View>
+);
+
+const EmptyState = ({ text }) => (
+  <GlassCard contentStyle={styles.emptyCard}>
+    <AppText style={styles.emptyText}>{text}</AppText>
+  </GlassCard>
 );
 
 const Stat = ({ label, value }) => (
   <View>
     <AppText style={styles.statLabel}>{label}</AppText>
-    <AppText style={styles.statValue}>{value}</AppText>
+    <View style={styles.statValueRow}>
+      <AppIcon name="favorite-border" color={AppColors.white} size={14} />
+      <AppText style={styles.statValue}>{value}</AppText>
+    </View>
   </View>
 );
 
 const ActionTile = ({ dark, icon, onPress, title }) => (
   <TouchableOpacity activeOpacity={0.84} onPress={onPress} style={[styles.actionTile, dark && styles.actionTileDark]}>
-    <View style={[styles.smallCircle, dark && styles.smallCircleLight]}>
-      <AppIcon name={icon} color={dark ? AppColors.themeColor : AppColors.white} size={20} />
+    <View style={[styles.actionIconCircle, dark && styles.actionIconCircleLight]}>
+      <AppIcon name={icon} color={AppColors.themeColor} size={20} />
     </View>
     <AppText style={[styles.actionTileText, dark && styles.actionTileTextDark]}>{title}</AppText>
   </TouchableOpacity>
@@ -138,10 +196,12 @@ const Transaction = ({ item }) => (
 const styles = StyleSheet.create({
   content: { paddingBottom: responsiveHeight(6) },
   body: { paddingHorizontal: responsiveWidth(5.8), paddingTop: responsiveHeight(2.4) },
-  tabWrap: { flexDirection: 'row', height: responsiveHeight(5.2), padding: 4, borderRadius: 12, backgroundColor: AppColors.white },
+  emptyCard: { alignItems: 'center', backgroundColor: AppColors.memorialCard, borderColor: AppColors.homeBorder },
+  emptyText: { color: AppColors.homeTextMuted, fontSize: responsiveFontSize(1.35), textAlign: 'center' },
+  tabWrap: { flexDirection: 'row', height: responsiveHeight(5.2), padding: 4, borderRadius: 12, backgroundColor: AppColors.onboardingButton },
   tabItem: { flex: 1, alignItems: 'center', justifyContent: 'center', borderRadius: 10 },
-  tabItemActive: { backgroundColor: AppColors.themeColor },
-  tabText: { color: AppColors.themeColor, fontSize: responsiveFontSize(1.35), fontWeight: '700' },
+  tabItemActive: { backgroundColor: AppColors.memorialCard },
+  tabText: { color: AppColors.white, fontSize: responsiveFontSize(1.35), fontWeight: '700' },
   tabTextActive: { color: AppColors.white },
   balanceCard: { backgroundColor: AppColors.memorialCard, borderColor: AppColors.homeBorder },
   balanceTop: { flexDirection: 'row', justifyContent: 'space-between' },
@@ -153,10 +213,13 @@ const styles = StyleSheet.create({
   cardDivider: { height: 0.5, backgroundColor: AppColors.homeBorder, marginVertical: responsiveHeight(2) },
   statRow: { flexDirection: 'row', justifyContent: 'space-between' },
   statLabel: { color: AppColors.homeTextMuted, fontSize: responsiveFontSize(1.15) },
-  statValue: { color: AppColors.white, fontSize: responsiveFontSize(1.8), fontWeight: '700', marginTop: responsiveHeight(0.4) },
+  statValueRow: { alignItems: 'center', flexDirection: 'row', marginTop: responsiveHeight(0.4) },
+  statValue: { color: AppColors.white, fontSize: responsiveFontSize(1.8), fontWeight: '700', marginLeft: responsiveWidth(1) },
   walletActions: { flexDirection: 'row', gap: responsiveWidth(3.8), marginVertical: responsiveHeight(2.4) },
   actionTile: { flex: 1, alignItems: 'center', borderRadius: 16, paddingVertical: responsiveHeight(2.5), backgroundColor: AppColors.homeActionCard },
   actionTileDark: { backgroundColor: AppColors.memorialCard, borderWidth: 0.5, borderColor: AppColors.homeBorder },
+  actionIconCircle: { alignItems: 'center', justifyContent: 'center', width: responsiveWidth(9.8), height: responsiveWidth(9.8), borderRadius: responsiveWidth(4.9), backgroundColor: AppColors.white },
+  actionIconCircleLight: { backgroundColor: AppColors.white },
   smallCircle: { alignItems: 'center', justifyContent: 'center', width: responsiveWidth(9.8), height: responsiveWidth(9.8), borderRadius: responsiveWidth(4.9), backgroundColor: AppColors.white },
   smallCircleLight: { backgroundColor: AppColors.white },
   actionTileText: { color: AppColors.white, fontSize: responsiveFontSize(1.35), fontWeight: '700', marginTop: responsiveHeight(1.2), textAlign: 'center' },
@@ -168,6 +231,8 @@ const styles = StyleSheet.create({
   sectionRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: responsiveHeight(3), marginBottom: responsiveHeight(1.4) },
   sectionTitle: { color: AppColors.white, fontSize: responsiveFontSize(1.8), fontWeight: '700' },
   viewAll: { color: AppColors.white, fontSize: responsiveFontSize(1.35) },
+  historyHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginBottom: responsiveHeight(1.6) },
+  historyCount: { color: AppColors.homeTextMuted, fontSize: responsiveFontSize(1.2) },
   transaction: { flexDirection: 'row', alignItems: 'center', backgroundColor: AppColors.memorialCard, borderColor: AppColors.homeBorder, marginBottom: responsiveHeight(1.2) },
   transactionCopy: { flex: 1, marginLeft: responsiveWidth(3.8) },
   amount: { color: '#FFB7B7', fontSize: responsiveFontSize(1.45), fontWeight: '700' },

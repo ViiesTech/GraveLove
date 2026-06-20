@@ -10,6 +10,7 @@ import ScreenWrapper from '../components/ScreenWrapper';
 import { showToast } from '../utils/Toast';
 import { AppAssets } from '../utils/AppAssets';
 import { AppColors } from '../utils/AppColors';
+import { useLoginUserMutation } from '../redux/api/authApi';
 import {
   responsiveFontSize,
   responsiveHeight,
@@ -20,7 +21,7 @@ const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [loginUser, { isLoading }] = useLoginUserMutation();
 
   const getRootNavigation = () => {
     let rootNavigation = navigation;
@@ -32,26 +33,34 @@ const LoginScreen = ({ navigation }) => {
     return rootNavigation;
   };
 
-  const navigateMain = routeName => {
-    getRootNavigation().navigate('MainStack', { screen: routeName });
+  const navigateMain = () => {
+    getRootNavigation().reset({
+      index: 0,
+      routes: [{ name: 'MainStack' }],
+    });
   };
 
   const navigateAuth = routeName => {
     getRootNavigation().navigate('AuthStack', { screen: routeName });
   };
 
-  const handleSignIn = () => {
+  const handleSignIn = async () => {
     if (!email.trim() || !password.trim()) {
       showToast('Missing details', 'Please enter your email and password.');
       return;
     }
 
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      showToast('Login flow pending', 'API connection will be wired next.');
-      navigateMain('UserMain');
-    }, 600);
+    try {
+      const response = await loginUser({
+        email: email.trim(),
+        password,
+      }).unwrap();
+
+      showToast('Login successful', response?.message || 'Welcome back.');
+      navigateMain();
+    } catch (error) {
+      showToast('Login failed', error?.message || 'Invalid email or password.');
+    }
   };
 
   return (
@@ -59,7 +68,8 @@ const LoginScreen = ({ navigation }) => {
       isGradient
       isKeyboardAvoiding
       isScroll
-      contentContainerStyle={styles.scrollContent}>
+      contentContainerStyle={styles.scrollContent}
+    >
       <AuthHeader title="Welcome Back" subtitle="Sign in to continue" />
 
       <LineBreak height={4.9} />
@@ -93,7 +103,8 @@ const LoginScreen = ({ navigation }) => {
           style={styles.forgotButton}
           onPress={() =>
             navigation.navigate('ForgotPassword', { role: 'user' })
-          }>
+          }
+        >
           <AppText style={styles.forgotText}>Forgot password?</AppText>
         </Pressable>
 
@@ -101,7 +112,8 @@ const LoginScreen = ({ navigation }) => {
         <AppButton
           isLoading={isLoading}
           onPress={handleSignIn}
-          style={styles.signInButton}>
+          style={styles.signInButton}
+        >
           Sign In
         </AppButton>
       </View>
@@ -141,7 +153,8 @@ const LoginScreen = ({ navigation }) => {
       <LineBreak height={2.45} />
       <Pressable
         style={styles.vendorButton}
-        onPress={() => navigateAuth('VendorAuth')}>
+        onPress={() => navigateAuth('VendorAuth')}
+      >
         <AppText style={styles.vendorText}>Are you Vendor?</AppText>
       </Pressable>
     </ScreenWrapper>
@@ -156,8 +169,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     alignItems: 'center',
     paddingHorizontal: responsiveWidth(5.8),
-    paddingTop: responsiveHeight(4.9),
-    paddingBottom: responsiveHeight(4.9),
+    paddingVertical: responsiveHeight(4),
   },
   form: {
     width: '100%',
@@ -172,7 +184,7 @@ const styles = StyleSheet.create({
     paddingVertical: responsiveHeight(1.5),
   },
   forgotText: {
-    color: AppColors.gold,
+    color: AppColors.forgotPass,
     fontSize: responsiveFontSize(1.52),
   },
   signInButton: {
@@ -205,11 +217,11 @@ const styles = StyleSheet.create({
   dividerLabel: {
     paddingHorizontal: responsiveWidth(3.9),
     paddingVertical: responsiveHeight(0.5),
-    borderRadius: 4,
+    // borderRadius: 4,
     backgroundColor: 'rgba(248, 251, 255, 0.9)',
   },
   dividerText: {
-    color: AppColors.themeColor,
+    color: AppColors.continueWith,
     fontSize: responsiveFontSize(1.3),
     fontWeight: '700',
   },

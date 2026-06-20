@@ -1,14 +1,21 @@
-import React, { useMemo, useState } from 'react';
-import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Image, Modal, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import AppButton from '../../../components/AppButton';
 import AppIcon from '../../../components/AppIcon';
 import AppImageHeader from '../../../components/AppImageHeader';
 import AppText from '../../../components/AppText';
 import LineBreak from '../../../components/LineBreak';
 import ScreenWrapper from '../../../components/ScreenWrapper';
+import {
+  useCommentOnClientPostMutation,
+  useGetClientMemorialPostsQuery,
+  useGetClientMemorialsQuery,
+  useReactToClientPostMutation,
+  useShareClientPostMutation,
+} from '../../../redux/api/userApi';
 import { AppAssets } from '../../../utils/AppAssets';
 import { AppColors } from '../../../utils/AppColors';
-import { AppSvgAssets } from '../../../utils/AppSvgAssets';
+import { showToast } from '../../../utils/Toast';
 import {
   responsiveFontSize,
   responsiveHeight,
@@ -17,36 +24,34 @@ import {
 
 const filters = ['Recent', 'Most Loved'];
 
-const communityPosts = [
-  {
-    badgeLabel: 'Tribute',
-    commentCount: '18 comments',
-    content:
-      'Dad taught us that love is shown in small steady acts. We miss him every day.',
-    id: 'p1',
-    likeCount: '124',
-    location: 'Forest Lawn Memorial Park',
-    postImage: AppAssets.images.userDashboardFront,
-    timeAgo: '2h ago',
-    tributeTarget: 'Robert James Thompson - In Loving Memory',
-    userImage: AppAssets.images.profilePic,
-    userName: 'Sarah Thompson',
-  },
-  {
-    badgeLabel: 'Memory',
-    commentCount: '12 comments',
-    content:
-      'Her flowers were always bright, and somehow so was every room she entered.',
-    id: 'p2',
-    likeCount: '98',
-    location: 'Oakwood Memorial Gardens',
-    postImage: AppAssets.images.memorialImage,
-    timeAgo: '1d ago',
-    tributeTarget: 'Margaret Anne Thompson - A Garden of Kindness',
-    userImage: AppAssets.images.vendor4,
-    userName: 'Michael Reed',
-  },
-];
+const firstValue = (...values) => values.find(value => value !== undefined && value !== null && value !== '') || '';
+const remoteImage = (url, fallback) => (url ? { uri: url } : fallback);
+
+const getSelectedMemorial = memorials => {
+  if (!memorials?.length) {
+    return null;
+  }
+  return memorials.find(item => item?.is_selected === true || item?.selected === true) || memorials[0];
+};
+
+const mapCommunityPost = (post, selectedMemorial) => {
+  const likes = firstValue(post?.likes_count, post?.reactions_count, post?.hearts, 0);
+  const comments = firstValue(post?.comments_count, post?.comments, 0);
+  const image = firstValue(post?.image_url, post?.image, post?.photo_url, post?.photo);
+  return {
+    badgeLabel: firstValue(post?.category, post?.type, 'Tribute'),
+    commentCount: `${comments} comments`,
+    content: firstValue(post?.body, post?.content, post?.message, ''),
+    id: firstValue(post?.id, post?.created_at),
+    likeCount: `${likes}`,
+    location: firstValue(post?.location, post?.memorial?.cemetery_name, selectedMemorial?.cemetery_name, ''),
+    postImage: remoteImage(image, AppAssets.images.userDashboardFront),
+    timeAgo: firstValue(post?.time_ago, post?.created_at_human, post?.created_at, ''),
+    tributeTarget: firstValue(post?.title, `In loving memory of ${firstValue(selectedMemorial?.name, selectedMemorial?.full_name, 'Loved One')}`),
+    userImage: remoteImage(firstValue(post?.user?.avatar_url, post?.user?.profile_picture, post?.author?.profile_picture), AppAssets.images.profilePic),
+    userName: firstValue(post?.author_name, post?.user?.name, post?.author?.name, 'Community Member'),
+  };
+};
 
 const ads = [
   {
@@ -65,6 +70,35 @@ const ads = [
 
 const UserMostLovedMemoriesScreen = ({ navigation }) => {
   const [selectedFilter, setSelectedFilter] = useState('Recent');
+  const [commentPost, setCommentPost] = useState(null);
+  const [commentBody, setCommentBody] = useState('');
+  const { data: memorials = [], isLoading: isMemorialsLoading, isFetching: isMemorialsFetching } = useGetClientMemorialsQuery();
+  const selectedMemorial = getSelectedMemorial(memorials);
+  const memorialId = firstValue(selectedMemorial?.id, selectedMemorial?.memorial_id);
+  const { data: postsData = [], isLoading, isFetching, isError } = useGetClientMemorialPostsQuery(memorialId, { skip: !memorialId });
+  const isLoadingCommunity = isMemorialsLoading || isMemorialsFetching || isLoading || isFetching;
+  const [reactToPost] = useReactToClientPostMutation();
+  const [commentOnPost, { isLoading: isCommenting }] = useCommentOnClientPostMutation();
+  const [sharePost] = useShareClientPostMutation();
+  const communityPosts = useMemo(
+    () => postsData.map(post => mapCommunityPost(post, selectedMemorial)),
+    [postsData, selectedMemorial],
+  );
+
+  useEffect(() => {
+    if (!memorialId) {
+      console.log('[COMMUNITY STORIES SKIPPED]', {
+        memorialsCount: memorials.length,
+        reason: 'No memorial id available',
+      });
+      return;
+    }
+    console.log('[COMMUNITY STORIES RESPONSE]', {
+      memorialId,
+      posts: postsData,
+      total: postsData.length,
+    });
+  }, [memorialId, memorials.length, postsData]);
 
   const feed = useMemo(() => {
     const sortedPosts =
@@ -74,10 +108,12 @@ const UserMostLovedMemoriesScreen = ({ navigation }) => {
           )
         : communityPosts;
 
-    const mixed = [];
-    if (sortedPosts[0]) {
-      mixed.push({ data: sortedPosts[0], type: 'post' });
+    if (!sortedPosts.length) {
+      return [];
     }
+
+    const mixed = [];
+    mixed.push({ data: sortedPosts[0], type: 'post' });
     mixed.push({ data: ads[0], type: 'ad' });
     sortedPosts.slice(1).forEach((post, index) => {
       mixed.push({ data: post, type: 'post' });
@@ -86,7 +122,54 @@ const UserMostLovedMemoriesScreen = ({ navigation }) => {
       }
     });
     return mixed;
-  }, [selectedFilter]);
+  }, [communityPosts, selectedFilter]);
+
+  const handleLove = async post => {
+    if (!post?.id) {
+      return;
+    }
+    try {
+      await reactToPost({ postId: post.id, body: { reaction: 'heart' } }).unwrap();
+    } catch (error) {
+      showToast('Community', error?.message || 'Unable to react right now');
+    }
+  };
+
+  const handleShare = async post => {
+    if (!post?.id) {
+      return;
+    }
+    try {
+      await sharePost({ postId: post.id, body: { channel: 'app' } }).unwrap();
+      showToast('Post shared successfully');
+    } catch (error) {
+      showToast('Community', error?.message || 'Unable to share right now');
+    }
+  };
+
+  const openComment = post => {
+    setCommentPost(post);
+    setCommentBody('');
+  };
+
+  const closeComment = () => {
+    setCommentPost(null);
+    setCommentBody('');
+  };
+
+  const handleComment = async () => {
+    const body = commentBody.trim();
+    if (!body || !commentPost?.id) {
+      return;
+    }
+    try {
+      await commentOnPost({ postId: commentPost.id, body: { body } }).unwrap();
+      showToast('Comment posted');
+      closeComment();
+    } catch (error) {
+      showToast('Community', error?.message || 'Unable to comment right now');
+    }
+  };
 
   return (
     <ScreenWrapper style={styles.screen}>
@@ -111,19 +194,35 @@ const UserMostLovedMemoriesScreen = ({ navigation }) => {
         <LineBreak height={2.4} />
         <ShareMemoryCard onPress={() => navigation.navigate('UserPostMemory')} />
         <LineBreak height={0.8} />
-        {feed.length ? (
+        {isLoadingCommunity ? <Loader /> : null}
+        {isError ? <AppText style={styles.emptyText}>Unable to load community stories.</AppText> : null}
+        {!isLoadingCommunity && !isError && feed.length ? (
           feed.map((item, index) =>
             item.type === 'post' ? (
-              <CommunityPostCard key={item.data.id} post={item.data} />
+              <CommunityPostCard
+                key={item.data.id}
+                onComment={() => openComment(item.data)}
+                onLove={() => handleLove(item.data)}
+                onShare={() => handleShare(item.data)}
+                post={item.data}
+              />
             ) : (
               <SponsoredCard key={`${item.data.title}-${index}`} ad={item.data} />
             ),
           )
-        ) : (
+        ) : !isLoadingCommunity && !isError ? (
           <AppText style={styles.emptyText}>No community stories yet.</AppText>
-        )}
+        ) : null}
         <AppButton style={styles.loadMoreButton}>Load More Stories</AppButton>
       </ScreenWrapper>
+      <CommentModal
+        body={commentBody}
+        loading={isCommenting}
+        onChangeBody={setCommentBody}
+        onClose={closeComment}
+        onSubmit={handleComment}
+        visible={Boolean(commentPost)}
+      />
     </ScreenWrapper>
   );
 };
@@ -140,9 +239,9 @@ const FilterSection = ({ onSelect, selectedFilter }) => (
             onPress={() => onSelect(filter)}
             style={[styles.filterChip, isSelected && styles.filterChipActive]}>
             <AppIcon
-              name={filter === 'Recent' ? 'access-time' : 'favorite'}
-              color={isSelected ? AppColors.white : AppColors.themeColor}
-              size={16}
+              name={filter === 'Recent' ? 'access-time' : 'trending-up'}
+              color={AppColors.white}
+              size={filter === 'Recent' ? 16 : 18}
             />
             <AppText
               style={[
@@ -161,7 +260,9 @@ const FilterSection = ({ onSelect, selectedFilter }) => (
 const ShareMemoryCard = ({ onPress }) => (
   <View style={styles.cardShell}>
     <View style={styles.shareMemoryCard}>
-      <AppIcon svg={AppSvgAssets.flower} size={responsiveWidth(9.66)} />
+      <View style={styles.shareIconCircle}>
+        <AppIcon name="local-florist" color={AppColors.memorialCard} size={responsiveWidth(5.8)} />
+      </View>
       <View style={styles.shareCopy}>
         <AppText style={styles.shareTitle}>Share Your Memory</AppText>
         <AppText numberOfLines={1} style={styles.shareSub}>
@@ -175,7 +276,13 @@ const ShareMemoryCard = ({ onPress }) => (
   </View>
 );
 
-const CommunityPostCard = ({ post }) => (
+const Loader = () => (
+  <View style={styles.loaderWrap}>
+    <ActivityIndicator color={AppColors.onboardingButton} size="large" />
+  </View>
+);
+
+const CommunityPostCard = ({ onComment, onLove, onShare, post }) => (
   <View style={styles.cardShell}>
     <View style={styles.postCard}>
       <View style={styles.postTop}>
@@ -204,12 +311,12 @@ const CommunityPostCard = ({ post }) => (
       <AppText style={styles.postContent}>{post.content}</AppText>
       <LineBreak height={1.2} />
       <Image source={post.postImage} style={styles.postImage} />
-      <PostActions post={post} />
+      <PostActions onComment={onComment} onLove={onLove} onShare={onShare} post={post} />
     </View>
   </View>
 );
 
-const PostActions = ({ post }) => (
+const PostActions = ({ onComment, onLove, onShare, post }) => (
   <View>
     <View style={styles.postStats}>
       <AppIcon name="favorite" color={AppColors.white} size={14} />
@@ -218,18 +325,51 @@ const PostActions = ({ post }) => (
     </View>
     <View style={styles.divider} />
     <View style={styles.actionRow}>
-      <InteractionButton icon="favorite-border" label="Love" />
-      <InteractionButton icon="chat-bubble-outline" label="Comment" />
-      <InteractionButton icon="share" label="Share" />
+      <InteractionButton icon="favorite-border" label="Love" onPress={onLove} />
+      <InteractionButton icon="chat-bubble-outline" label="Comment" onPress={onComment} />
+      <InteractionButton icon="share" label="Share" onPress={onShare} />
     </View>
   </View>
 );
 
-const InteractionButton = ({ icon, label }) => (
-  <TouchableOpacity activeOpacity={0.82} style={styles.interactionBtn}>
+const InteractionButton = ({ icon, label, onPress }) => (
+  <TouchableOpacity activeOpacity={0.82} onPress={onPress} style={styles.interactionBtn}>
     <AppIcon name={icon} color={AppColors.white} size={20} />
     <AppText style={styles.interactionText}>{label}</AppText>
   </TouchableOpacity>
+);
+
+const CommentModal = ({ body, loading, onChangeBody, onClose, onSubmit, visible }) => (
+  <Modal transparent animationType="fade" visible={visible} onRequestClose={onClose}>
+    <View style={styles.commentBackdrop}>
+      <View style={styles.commentModal}>
+        <View style={styles.commentHeader}>
+          <AppText style={styles.commentTitle}>Add Comment</AppText>
+          <TouchableOpacity activeOpacity={0.75} onPress={onClose}>
+            <AppIcon name="close" color={AppColors.homeTextMuted} size={20} />
+          </TouchableOpacity>
+        </View>
+        <LineBreak height={1.6} />
+        <TextInput
+          multiline
+          value={body}
+          onChangeText={onChangeBody}
+          placeholder="Write your comment..."
+          placeholderTextColor={AppColors.homeTextMuted}
+          style={styles.commentInput}
+        />
+        <LineBreak height={1.8} />
+        <TouchableOpacity
+          activeOpacity={0.82}
+          disabled={loading || !body.trim()}
+          onPress={onSubmit}
+          style={[styles.commentButton, (loading || !body.trim()) && styles.commentButtonDisabled]}
+        >
+          <AppText style={styles.commentButtonText}>{loading ? 'Posting...' : 'Post'}</AppText>
+        </TouchableOpacity>
+      </View>
+    </View>
+  </Modal>
 );
 
 const SponsoredCard = ({ ad }) => (
@@ -270,7 +410,7 @@ const styles = StyleSheet.create({
   },
   filterSection: {
     paddingVertical: responsiveHeight(1.6),
-    backgroundColor: 'rgba(255,255,255,0.96)',
+    backgroundColor: AppColors.memorialCard,
   },
   filterContent: {
     flexDirection: 'row',
@@ -278,20 +418,20 @@ const styles = StyleSheet.create({
   },
   filterChip: {
     alignItems: 'center',
+    borderColor: '#102D5B',
+    borderWidth: 1,
     flexDirection: 'row',
     marginRight: responsiveWidth(2.9),
-    paddingHorizontal: responsiveWidth(3.86),
-    paddingVertical: responsiveHeight(0.85),
+    paddingHorizontal: responsiveWidth(4.2),
+    paddingVertical: responsiveHeight(1),
     borderRadius: 100,
-    borderWidth: 1,
-    borderColor: 'rgba(4,47,103,0.22)',
   },
   filterChipActive: {
-    backgroundColor: AppColors.themeColor,
-    borderColor: AppColors.themeColor,
+    backgroundColor: AppColors.onboardingButton,
+    borderColor: AppColors.onboardingButton,
   },
   filterText: {
-    color: AppColors.themeColor,
+    color: AppColors.white,
     fontSize: responsiveFontSize(1.18),
     marginLeft: responsiveWidth(1.8),
   },
@@ -315,24 +455,33 @@ const styles = StyleSheet.create({
     flex: 1,
     marginHorizontal: responsiveWidth(2.9),
   },
+  shareIconCircle: {
+    alignItems: 'center',
+    backgroundColor: AppColors.white,
+    borderRadius: responsiveWidth(5.2),
+    height: responsiveWidth(10.4),
+    justifyContent: 'center',
+    width: responsiveWidth(10.4),
+  },
   shareTitle: {
     color: AppColors.white,
-    fontSize: responsiveFontSize(1.35),
+    fontSize: responsiveFontSize(1.55),
+    fontWeight: '700',
   },
   shareSub: {
     color: AppColors.homeTextMuted,
-    fontSize: responsiveFontSize(1.1),
+    fontSize: responsiveFontSize(1.22),
     marginTop: responsiveHeight(0.35),
   },
   smallPostBtn: {
     paddingHorizontal: responsiveWidth(3.86),
-    paddingVertical: responsiveHeight(0.85),
+    paddingVertical: responsiveHeight(0.95),
     borderRadius: 100,
-    backgroundColor: AppColors.onboardingButton,
+    backgroundColor: AppColors.white,
   },
   smallPostText: {
-    color: AppColors.white,
-    fontSize: responsiveFontSize(1.08),
+    color: AppColors.memorialCard,
+    fontSize: responsiveFontSize(1.16),
     fontWeight: '700',
   },
   postCard: {
@@ -503,13 +652,28 @@ const styles = StyleSheet.create({
   emptyText: {
     color: AppColors.homeTextMuted,
     fontSize: responsiveFontSize(1.3),
+    marginBottom: responsiveHeight(1.8),
+    marginTop: responsiveHeight(2.2),
     textAlign: 'center',
+  },
+  loaderWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: responsiveHeight(3),
   },
   loadMoreButton: {
     marginHorizontal: responsiveWidth(5.8),
     marginTop: responsiveHeight(0.4),
     backgroundColor: AppColors.onboardingButton,
   },
+  commentBackdrop: { alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.55)', flex: 1, justifyContent: 'center', padding: responsiveWidth(5.8) },
+  commentModal: { backgroundColor: AppColors.memorialCard, borderColor: AppColors.homeBorder, borderRadius: 24, borderWidth: 0.5, padding: responsiveWidth(5.8), width: '100%' },
+  commentHeader: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between' },
+  commentTitle: { color: AppColors.white, fontSize: responsiveFontSize(1.75), fontWeight: '700' },
+  commentInput: { backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 16, color: AppColors.white, fontSize: responsiveFontSize(1.3), minHeight: responsiveHeight(12), padding: responsiveWidth(4), textAlignVertical: 'top' },
+  commentButton: { alignItems: 'center', backgroundColor: AppColors.onboardingButton, borderRadius: 24, height: responsiveHeight(5.4), justifyContent: 'center' },
+  commentButtonDisabled: { opacity: 0.55 },
+  commentButtonText: { color: AppColors.white, fontSize: responsiveFontSize(1.35), fontWeight: '700' },
 });
 
 export default UserMostLovedMemoriesScreen;

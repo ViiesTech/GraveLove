@@ -31,8 +31,7 @@ const MapSelectionScreen = ({ navigation }) => (
     <View style={styles.footer}>
       <AppButton
         onPress={() => navigation.goBack()}
-        style={styles.confirmButton}
-        textStyle={styles.confirmText}>
+        style={styles.confirmButton}>
         Confirm Location
       </AppButton>
     </View>
@@ -73,12 +72,8 @@ const styles = StyleSheet.create({
     right: responsiveWidth(5.8),
   },
   confirmButton: {
-    backgroundColor: AppColors.homeActionCard,
+    backgroundColor: AppColors.onboardingButton,
     borderRadius: 30,
-  },
-  confirmText: {
-    color: AppColors.white,
-    fontSize: responsiveFontSize(1.2),
   },
 });
 

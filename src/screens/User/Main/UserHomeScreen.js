@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import {
+  Alert,
   Animated,
   ImageBackground,
   Modal,
@@ -7,30 +8,28 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AppIcon from '../../../components/AppIcon';
 import AppText from '../../../components/AppText';
 import GlassCard from '../../../components/GlassCard';
 import LineBreak from '../../../components/LineBreak';
 import ScreenWrapper from '../../../components/ScreenWrapper';
 import SectionHeader from '../../../components/SectionHeader';
+import { useLogoutMutation } from '../../../redux/api/authApi';
+import {
+  useGetClientBookingsQuery,
+  useGetClientDashboardQuery,
+  useGetClientWalletQuery,
+} from '../../../redux/api/userApi';
 import { AppAssets } from '../../../utils/AppAssets';
 import { AppColors } from '../../../utils/AppColors';
 import { AppSvgAssets } from '../../../utils/AppSvgAssets';
+import { showToast } from '../../../utils/Toast';
 import {
   responsiveFontSize,
   responsiveHeight,
   responsiveWidth,
 } from '../../../utils/Responsive_Dimensions';
-
-const user = {
-  firstName: 'John',
-  memorialsCount: '3 Active',
-  nextVisit: 'Nov 3',
-};
-
-const wallet = {
-  coins: 200,
-};
 
 const recolorHomeSvg = (
   svg,
@@ -40,14 +39,45 @@ const recolorHomeSvg = (
     .replace(/#42262B/g, brown)
     .replace(/#F0E5BB|#EBE1B7|#DDD8C4|#FBF0C4|#E2D8B0/g, light);
 
-const upcomingServices = [
-  {
-    id: 's1',
-    serviceName: 'Fresh Flowers Placement',
-    date: 'Saturday, Nov 2 • 10:00 AM',
-    providerName: 'Garden Care Services',
-  },
-];
+const firstValue = (...values) =>
+  values.find(value => value !== undefined && value !== null && value !== '');
+
+const firstNameFrom = value => {
+  const rawName = value?.first_name || value?.full_name || value?.name || value;
+  if (typeof rawName !== 'string' || !rawName.trim()) {
+    return 'User';
+  }
+  return rawName.trim().split(' ')[0];
+};
+
+const formatBookingDate = booking =>
+  firstValue(
+    booking?.formatted_date,
+    booking?.date_time,
+    booking?.scheduled_at,
+    booking?.booking_date,
+    booking?.date,
+    'No visit',
+  );
+
+const mapBookingToService = booking => ({
+  id: `${firstValue(booking?.id, booking?.booking_id, booking?.service_name, 'service')}`,
+  serviceName: firstValue(
+    booking?.service_name,
+    booking?.service?.name,
+    booking?.service,
+    booking?.title,
+    'Service Booking',
+  ),
+  date: formatBookingDate(booking),
+  providerName: firstValue(
+    booking?.vendor_name,
+    booking?.vendor?.business_name,
+    booking?.vendor?.name,
+    booking?.provider_name,
+    'Vendor',
+  ),
+});
 
 const quickActions = [
   {
@@ -87,7 +117,41 @@ const quickActions = [
 
 const UserHomeScreen = ({ navigation }) => {
   const [isQuickMenuOpen, setIsQuickMenuOpen] = useState(false);
+  const { data: dashboardData, isLoading: isDashboardLoading } = useGetClientDashboardQuery();
+  const { data: bookingsData = [], isLoading: isBookingsLoading } = useGetClientBookingsQuery();
+  const { data: walletData } = useGetClientWalletQuery();
   const slideAnim = useRef(new Animated.Value(responsiveWidth(90))).current;
+
+  const activeMemorials = firstValue(
+    dashboardData?.active_memorials_count,
+    dashboardData?.memorials_count,
+    dashboardData?.memorials?.length,
+    0,
+  );
+  const homeUser = {
+    firstName: firstNameFrom(dashboardData?.user || dashboardData?.profile),
+    memorialsCount: typeof activeMemorials === 'number'
+      ? `${activeMemorials} Active`
+      : `${activeMemorials}`,
+    nextVisit: firstValue(
+      dashboardData?.next_visit?.date,
+      dashboardData?.next_visit,
+      bookingsData?.[0] ? formatBookingDate(bookingsData[0]) : null,
+      'No visit',
+    ),
+  };
+  const homeWallet = {
+    coins: firstValue(
+      walletData?.balance,
+      walletData?.hearts,
+      walletData?.available_balance,
+      dashboardData?.wallet?.balance,
+      0,
+    ),
+  };
+  const homeUpcomingServices = bookingsData?.length
+    ? bookingsData.slice(0, 1).map(mapBookingToService)
+    : [];
 
   const openQuickMenu = () => {
     setIsQuickMenuOpen(true);
@@ -150,7 +214,7 @@ const UserHomeScreen = ({ navigation }) => {
   return (
     <ScreenWrapper style={styles.screen}>
       <View style={styles.container}>
-        <HomeHeader onNavigate={openPlaceholder} />
+        <HomeHeader user={homeUser} wallet={homeWallet} onNavigate={openPlaceholder} />
 
         <ScreenWrapper
           isScroll
@@ -166,7 +230,9 @@ const UserHomeScreen = ({ navigation }) => {
             <DailyInspiration />
             <LineBreak height={3.43} />
 
-            {upcomingServices.length ? (
+            {isDashboardLoading || isBookingsLoading ? (
+              <AppText style={styles.emptyText}>Loading your dashboard...</AppText>
+            ) : homeUpcomingServices.length ? (
               <>
                 <SectionHeader
                   title="Upcoming Services"
@@ -174,7 +240,7 @@ const UserHomeScreen = ({ navigation }) => {
                   onActionPress={() => openPlaceholder('User Bookings')}
                 />
                 <LineBreak height={1.72} />
-                {upcomingServices.map(service => (
+                {homeUpcomingServices.map(service => (
                   <UpcomingServiceCard
                     key={service.id}
                     service={service}
@@ -183,7 +249,14 @@ const UserHomeScreen = ({ navigation }) => {
                 ))}
                 <LineBreak height={3.43} />
               </>
-            ) : null}
+            ) : (
+              <>
+                <SectionHeader title="Upcoming Services" action="View All" onActionPress={() => openPlaceholder('User Bookings')} />
+                <LineBreak height={1.72} />
+                <AppText style={styles.emptyText}>No upcoming services found.</AppText>
+                <LineBreak height={3.43} />
+              </>
+            )}
 
             <QuickActions onActionPress={openPlaceholder} />
           </View>
@@ -202,14 +275,48 @@ const UserHomeScreen = ({ navigation }) => {
 const quickMenuItems = [
   ['calendar-today', 'My Bookings', 'UserBookings'],
   ['favorite-border', 'Memorial Profile', 'UserMemorials'],
-  ['account-circle', 'My Profile', 'UserProfile'],
-  ['favorite', 'Hearts Wallet', 'UserCoinsWallet'],
   ['auto-awesome', 'Subscription Plans', 'SelectSubscriptions'],
   ['volunteer-activism', 'Healing Support', 'HealingSupport'],
   ['help-outline', 'Help & Support', 'HelpSupport'],
 ];
 
 const QuickNavigationModal = ({ isVisible, navigation, onClose, translateX }) => {
+  const insets = useSafeAreaInsets();
+  const [logout] = useLogoutMutation();
+
+  const navigateAuth = () => {
+    let rootNavigation = navigation;
+
+    while (rootNavigation.getParent?.()) {
+      rootNavigation = rootNavigation.getParent();
+    }
+
+    rootNavigation.reset({
+      index: 0,
+      routes: [{ name: 'AuthStack' }],
+    });
+  };
+
+  const handleLogout = async () => {
+    onClose();
+
+    try {
+      const response = await logout({ role: 'user' }).unwrap();
+      showToast('Logged out', response?.message || 'You have been logged out.');
+    } catch (error) {
+      showToast('Logged out', error?.message || 'Session cleared.');
+    } finally {
+      setTimeout(navigateAuth, 210);
+    }
+  };
+
+  const confirmLogout = () => {
+    Alert.alert('Logout', 'Are you sure you want to logout?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Logout', style: 'destructive', onPress: handleLogout },
+    ]);
+  };
+
   const handleNavigate = (route, label) => {
     onClose();
     setTimeout(() => {
@@ -219,7 +326,13 @@ const QuickNavigationModal = ({ isVisible, navigation, onClose, translateX }) =>
 
   return (
     <Modal transparent animationType="fade" visible={isVisible} onRequestClose={onClose}>
-      <TouchableOpacity activeOpacity={1} onPress={onClose} style={styles.quickBackdrop}>
+      <TouchableOpacity
+        activeOpacity={1}
+        onPress={onClose}
+        style={[
+          styles.quickBackdrop,
+          { paddingTop: insets.top + responsiveHeight(1.72) },
+        ]}>
         <Animated.View
           style={[styles.quickMenuShell, { transform: [{ translateX }] }]}>
           <TouchableOpacity activeOpacity={1} style={styles.quickMenuCard}>
@@ -244,9 +357,12 @@ const QuickNavigationModal = ({ isVisible, navigation, onClose, translateX }) =>
               </TouchableOpacity>
             ))}
             <View style={styles.quickDivider} />
-            <TouchableOpacity activeOpacity={0.82} style={styles.quickMenuItem}>
+            <TouchableOpacity
+              activeOpacity={0.82}
+              onPress={confirmLogout}
+              style={styles.quickMenuItem}>
               <AppIcon name="logout" color="#EF5350" size={24} />
-              <AppText style={styles.quickLogout}>Log Out</AppText>
+              <AppText style={styles.quickLogout}>Logout</AppText>
             </TouchableOpacity>
           </TouchableOpacity>
         </Animated.View>
@@ -255,7 +371,7 @@ const QuickNavigationModal = ({ isVisible, navigation, onClose, translateX }) =>
   );
 };
 
-const HomeHeader = ({ onNavigate }) => (
+const HomeHeader = ({ onNavigate, user, wallet }) => (
   <ImageBackground
     source={AppAssets.images.userDashboardFront}
     imageStyle={styles.headerImage}
@@ -533,6 +649,11 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 600,
     paddingHorizontal: responsiveWidth(5.8),
+  },
+  emptyText: {
+    color: AppColors.homeTextMuted,
+    fontSize: responsiveFontSize(1.35),
+    textAlign: 'center',
   },
   searchBar: {
     alignItems: 'center',

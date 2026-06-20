@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { ImageBackground, Pressable, StyleSheet, View } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
 import AppButton from '../../../components/AppButton';
 import AppIcon from '../../../components/AppIcon';
 import AppText from '../../../components/AppText';
@@ -75,20 +74,10 @@ const VendorSignupScreen = ({ navigation }) => {
   return (
     <ScreenWrapper isGradient style={styles.screen}>
       <ImageBackground
-        source={AppAssets.images.vendorHeader}
+        source={AppAssets.images.memorialImage2}
         resizeMode="cover"
         imageStyle={styles.headerImage}
         style={styles.header}>
-        <View style={styles.headerTint} />
-        <LinearGradient
-          colors={[
-            'rgba(61, 139, 198, 0.18)',
-            'rgba(12, 43, 99, 0.76)',
-            AppColors.bgDark,
-          ]}
-          locations={[0, 0.68, 1]}
-          style={StyleSheet.absoluteFillObject}
-        />
         <View style={styles.headerContent}>
           <Pressable style={styles.backRow} onPress={() => navigation.goBack()}>
             <AppIcon
@@ -113,11 +102,11 @@ const VendorSignupScreen = ({ navigation }) => {
       </ImageBackground>
 
       <ScreenWrapper
-        isKeyboardAvoiding
         isScroll
         safeAreaEdges={[]}
         useBackgroundImage={false}
         scrollProps={{
+          automaticallyAdjustKeyboardInsets: true,
           bounces: false,
           keyboardDismissMode: 'interactive',
         }}
@@ -242,11 +231,7 @@ const styles = StyleSheet.create({
     backgroundColor: AppColors.bgDark,
   },
   headerImage: {
-    opacity: 0.38,
-  },
-  headerTint: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(5, 31, 75, 0.42)',
+    opacity: 1,
   },
   headerContent: {
     flex: 1,

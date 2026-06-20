@@ -1,13 +1,19 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import AppButton from '../../../components/AppButton';
 import AppIcon from '../../../components/AppIcon';
 import AppImageHeader from '../../../components/AppImageHeader';
 import AppText from '../../../components/AppText';
 import GlassCard from '../../../components/GlassCard';
 import LineBreak from '../../../components/LineBreak';
 import ScreenWrapper from '../../../components/ScreenWrapper';
+import {
+  useCreateClientBookingMutation,
+  useGetClientVendorSlotsQuery,
+} from '../../../redux/api/userApi';
 import { AppAssets } from '../../../utils/AppAssets';
 import { AppColors } from '../../../utils/AppColors';
+import { showToast } from '../../../utils/Toast';
 import {
   responsiveFontSize,
   responsiveHeight,
@@ -22,10 +28,77 @@ const calendarRows = [
   ['19', '20', '21', '22', '23', '24', '25'],
   ['26', '27', '28', '29', '30', '31', ''],
 ];
-const times = ['09:00 AM', '10:00 AM', '11:00 AM', '02:00 PM', '03:00 PM', '04:00 PM'];
+const fallbackTimes = ['09:00 AM', '10:00 AM', '11:00 AM', '02:00 PM', '03:00 PM', '04:00 PM'];
 
-const BookingServiceStep3 = ({ navigation }) => {
+const toApiDate = date => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const normalizeSlot = slot => {
+  if (typeof slot === 'string') {
+    return slot;
+  }
+  return slot?.time || slot?.slot || slot?.label || '';
+};
+
+const BookingServiceStep3 = ({ navigation, route }) => {
+  const bookingDraft = route?.params?.bookingDraft || {};
+  const selectedDate = useMemo(() => toApiDate(new Date(Date.now() + 24 * 60 * 60 * 1000)), []);
+  const { data: slotsData } = useGetClientVendorSlotsQuery(
+    { vendorId: bookingDraft.vendorId, date: selectedDate },
+    { skip: !bookingDraft.vendorId },
+  );
+  const apiSlots = Array.isArray(slotsData) ? slotsData : slotsData?.slots;
+  const times = Array.isArray(apiSlots) && apiSlots.length
+    ? apiSlots.map(normalizeSlot).filter(Boolean)
+    : fallbackTimes;
   const [selectedTime, setSelectedTime] = useState(1);
+  const [createBooking, { isLoading }] = useCreateClientBookingMutation();
+
+  const continueBooking = async () => {
+    const scheduledTime = times[selectedTime] || times[0];
+    const body = {
+      memorial_id: bookingDraft.memorialId,
+      vendor_id: bookingDraft.vendorId,
+      vendor_service_id: bookingDraft.vendorServiceId,
+      scheduled_date: selectedDate,
+      scheduled_time: scheduledTime,
+      instructions: 'Booked from mobile app',
+    };
+
+    if (!body.memorial_id || !body.vendor_id || !body.vendor_service_id) {
+      if (bookingDraft.isStaticRebook) {
+        navigation.navigate('BookingServiceStep4', {
+          bookingDraft: {
+            ...bookingDraft,
+            scheduledDate: selectedDate,
+            scheduledTime,
+          },
+        });
+        return;
+      }
+
+      showToast('Booking failed', 'Booking details are incomplete.');
+      return;
+    }
+
+    try {
+      const response = await createBooking(body).unwrap();
+      navigation.navigate('BookingServiceStep4', {
+        booking: response,
+        bookingDraft: {
+          ...bookingDraft,
+          scheduledDate: selectedDate,
+          scheduledTime,
+        },
+      });
+    } catch (error) {
+      showToast('Booking failed', error?.message || 'Please try again.');
+    }
+  };
 
   return (
     <ScreenWrapper
@@ -52,7 +125,7 @@ const BookingServiceStep3 = ({ navigation }) => {
 
         <AppText style={styles.sectionTitle}>Select Date</AppText>
         <LineBreak height={1.72} />
-        <CalendarCard />
+        <CalendarCard selectedDate={selectedDate} />
 
         <LineBreak height={3.43} />
         <AppText style={styles.sectionTitle}>Select Time</AppText>
@@ -75,22 +148,22 @@ const BookingServiceStep3 = ({ navigation }) => {
         </View>
 
         <LineBreak height={4.3} />
-        <TouchableOpacity
-          activeOpacity={0.82}
-          onPress={() => navigation.navigate('BookingServiceStep4')}
+        <AppButton
+          onPress={continueBooking}
+          isLoading={isLoading}
           style={styles.continueButton}>
-          <AppText style={styles.continueText}>Continue</AppText>
-        </TouchableOpacity>
+          Continue
+        </AppButton>
       </View>
     </ScreenWrapper>
   );
 };
 
-const CalendarCard = () => (
+const CalendarCard = ({ selectedDate }) => (
   <GlassCard contentStyle={styles.calendarCard}>
     <View style={styles.calendarHeader}>
       <AppIcon iconSet="ion" name="chevron-back" color={AppColors.white} size={20} />
-      <AppText style={styles.monthTitle}>October 2025</AppText>
+      <AppText style={styles.monthTitle}>{selectedDate}</AppText>
       <AppIcon iconSet="ion" name="chevron-forward" color={AppColors.white} size={20} />
     </View>
     <LineBreak height={2.15} />
@@ -212,21 +285,14 @@ const styles = StyleSheet.create({
     borderColor: AppColors.white,
   },
   timeText: {
-    color: 'rgba(255, 255, 255, 0.22)',
-    fontSize: responsiveFontSize(1.18),
+    color: '#6085AD',
+    fontSize: responsiveFontSize(1.28),
   },
   timeTextActive: {
-    color: AppColors.memorialCard,
+    color: '#1E548C',
   },
   continueButton: {
-    alignItems: 'center',
     backgroundColor: AppColors.homeActionCard,
-    borderRadius: 30,
-    paddingVertical: responsiveHeight(1.35),
-  },
-  continueText: {
-    color: AppColors.black,
-    fontSize: responsiveFontSize(1.12),
   },
 });
 

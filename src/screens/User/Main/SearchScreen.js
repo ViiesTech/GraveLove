@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Image, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Image, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 import AppIcon from '../../../components/AppIcon';
 import AppText from '../../../components/AppText';
 import GlassCard from '../../../components/GlassCard';
@@ -9,67 +9,100 @@ import { AppAssets } from '../../../utils/AppAssets';
 import { AppColors } from '../../../utils/AppColors';
 import { AppSvgAssets } from '../../../utils/AppSvgAssets';
 import {
+  useGetClientMemorialsQuery,
+  useGetClientTopVendorsQuery,
+  useGetClientVendorsQuery,
+} from '../../../redux/api/userApi';
+import {
   responsiveFontSize,
   responsiveHeight,
   responsiveWidth,
 } from '../../../utils/Responsive_Dimensions';
 
 const categories = ['All', 'Memorials', 'Vendors', 'Services', 'Cemeteries'];
-const recentSearches = ['flower service', 'forest lawn', 'wilson care'];
-const memorials = [
-  {
-    dates: 'Jan 15, 1945 - Mar 20, 2020',
-    image: AppAssets.images.profilePic,
-    location: 'Forest Lawn Memorial Park',
-    name: 'Robert James Thompson',
-    relation: 'Father',
-  },
-  {
-    dates: 'May 8, 1950 - Nov 12, 2022',
-    image: AppAssets.images.vendor2,
-    location: 'Oakwood Memorial Gardens',
-    name: 'Margaret Anne Thompson',
-    relation: 'Mother',
-  },
-];
-const vendors = [
-  {
-    badgeLabel: 'Top Rated 2025',
-    image: AppAssets.images.vendor1,
-    name: 'Wilson Care House',
-    rating: '4.9',
-    reviewsCount: '328 reviews',
-  },
-  {
-    badgeLabel: 'Best Quality 2025',
-    image: AppAssets.images.vendor2,
-    name: 'Henry Care House',
-    rating: '4.8',
-    reviewsCount: '295 reviews',
-  },
-];
+
+const mapMemorial = item => ({
+  dates: `${item?.date_of_birth ?? '-'} - ${item?.date_of_passing ?? '-'}`,
+  id: item?.id?.toString() || item?.memorial_id?.toString() || item?.name,
+  image: AppAssets.images.profilePic,
+  location: item?.address || item?.cemetery_name || item?.location || '',
+  name: item?.name || item?.full_name || 'Memorial',
+  relation: item?.relationship || item?.relation || 'Loved One',
+});
+
+const mapVendor = item => ({
+  badgeLabel: item?.badge?.toString() || 'Vendor',
+  id: item?.id?.toString() || item?.name,
+  image: AppAssets.images.vendor1,
+  name: item?.business_name || item?.name || item?.full_name || 'Vendor',
+  rating: (item?.rating ?? item?.average_rating ?? '0').toString(),
+  reviewsCount: `${item?.review_count ?? item?.reviews_count ?? 0} reviews`,
+});
 
 const SearchScreen = ({ navigation }) => {
   const [query, setQuery] = useState('');
+  const [recentSearches, setRecentSearches] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const trimmedQuery = query.trim();
+  const isSearching = trimmedQuery.length > 0;
+  const { data: memorialsData = [], isLoading: isMemorialsLoading, isFetching: isMemorialsFetching } = useGetClientMemorialsQuery();
+  const { data: topVendorsData = [], isLoading: isTopVendorsLoading, isFetching: isTopVendorsFetching } = useGetClientTopVendorsQuery(
+    { perPage: 30 },
+    { skip: isSearching },
+  );
+  const { data: searchedVendorsData = [], isLoading: isSearchLoading, isFetching: isSearchFetching } = useGetClientVendorsQuery(
+    { search: trimmedQuery, perPage: 30 },
+    { skip: !isSearching },
+  );
+  const seedLoading = isMemorialsLoading || isMemorialsFetching || (!isSearching && (isTopVendorsLoading || isTopVendorsFetching));
+  const searchLoading = isSearching && (isSearchLoading || isSearchFetching);
+  const isLoading = seedLoading || searchLoading;
+  const memorials = useMemo(() => memorialsData.map(mapMemorial), [memorialsData]);
+  const vendors = useMemo(
+    () => (isSearching ? searchedVendorsData : topVendorsData).map(mapVendor),
+    [isSearching, searchedVendorsData, topVendorsData],
+  );
+
+  useEffect(() => {
+    console.log('[SEARCH SCREEN API]', {
+      isSearching,
+      memorialsCount: memorialsData.length,
+      vendorsCount: (isSearching ? searchedVendorsData : topVendorsData).length,
+      query: trimmedQuery,
+    });
+  }, [isSearching, memorialsData.length, searchedVendorsData, topVendorsData, trimmedQuery]);
 
   const filteredMemorials = useMemo(() => {
-    const text = query.trim().toLowerCase();
+    const text = trimmedQuery.toLowerCase();
     if (!text) return [];
     return memorials.filter(item =>
       [item.name, item.relation, item.location].some(value =>
         value.toLowerCase().includes(text),
       ),
     );
-  }, [query]);
+  }, [memorials, trimmedQuery]);
 
   const filteredVendors = useMemo(() => {
-    const text = query.trim().toLowerCase();
+    const text = trimmedQuery.toLowerCase();
     if (!text) return [];
     return vendors.filter(item =>
       [item.name, item.badgeLabel].some(value => value.toLowerCase().includes(text)),
     );
-  }, [query]);
+  }, [trimmedQuery, vendors]);
+
+  const runSearch = value => {
+    const nextQuery = value.trim();
+    setQuery(value);
+    if (!nextQuery) {
+      return;
+    }
+    setRecentSearches(current => {
+      const filtered = current.filter(item => item.toLowerCase() !== nextQuery.toLowerCase());
+      return [nextQuery, ...filtered].slice(0, 8);
+    });
+  };
+
+  const clearQuery = () => setQuery('');
 
   return (
     <ScreenWrapper
@@ -77,29 +110,37 @@ const SearchScreen = ({ navigation }) => {
       style={styles.screen}
       contentContainerStyle={styles.scrollContent}>
       <View style={styles.searchHeader}>
+        <View style={styles.titleRow}>
+          {navigation.canGoBack() ? (
+            <TouchableOpacity
+              activeOpacity={0.75}
+              onPress={() => navigation.goBack()}
+              style={styles.backButton}>
+              <AppIcon iconSet="ion" name="chevron-back" color={AppColors.white} size={22} />
+            </TouchableOpacity>
+          ) : null}
+          <AppText style={styles.headerTitle}>Search</AppText>
+        </View>
+        <LineBreak height={1.5} />
         <View style={styles.searchRow}>
-          <TouchableOpacity
-            activeOpacity={0.75}
-            onPress={() => navigation.goBack()}
-            style={styles.backButton}>
-            <AppIcon iconSet="ion" name="chevron-back" color={AppColors.white} size={22} />
-          </TouchableOpacity>
           <View style={styles.searchBox}>
             <AppIcon name="search" color={AppColors.homeTextMuted} size={20} />
             <TextInput
               value={query}
               onChangeText={setQuery}
+              onSubmitEditing={({ nativeEvent }) => runSearch(nativeEvent.text)}
               placeholder="Search memorials, services, cemeteries..."
               placeholderTextColor={AppColors.homeTextMuted}
               style={styles.searchInput}
+              returnKeyType="search"
             />
             {query ? (
-              <TouchableOpacity activeOpacity={0.75} onPress={() => setQuery('')}>
+              <TouchableOpacity activeOpacity={0.75} onPress={clearQuery}>
                 <AppIcon name="clear" color={AppColors.white} size={20} />
               </TouchableOpacity>
             ) : null}
           </View>
-          <TouchableOpacity activeOpacity={0.82} style={styles.searchButton}>
+          <TouchableOpacity activeOpacity={0.82} onPress={() => runSearch(query)} style={styles.searchButton}>
             <AppIcon name="search" color={AppColors.memorialCard} size={24} />
           </TouchableOpacity>
         </View>
@@ -124,7 +165,11 @@ const SearchScreen = ({ navigation }) => {
         </View>
         <LineBreak height={2.58} />
 
-        {query.trim() ? (
+        {isLoading ? (
+          <View style={styles.loaderWrap}>
+            <ActivityIndicator color={AppColors.onboardingButton} size="large" />
+          </View>
+        ) : isSearching ? (
           <SearchResults
             memorials={filteredMemorials}
             navigation={navigation}
@@ -133,7 +178,7 @@ const SearchScreen = ({ navigation }) => {
           />
         ) : (
           <>
-            <RecentSearches onSelect={setQuery} />
+            <RecentSearches onClear={() => setRecentSearches([])} onSelect={setQuery} searches={recentSearches} />
             <LineBreak height={3.43} />
             <QuickActions onSelect={setQuery} />
           </>
@@ -143,14 +188,16 @@ const SearchScreen = ({ navigation }) => {
   );
 };
 
-const RecentSearches = ({ onSelect }) => (
+const RecentSearches = ({ onClear, onSelect, searches }) => (
   <View>
     <View style={styles.sectionRow}>
       <AppText style={styles.sectionTitle}>Recent Searches</AppText>
-      <AppText style={styles.clearText}>Clear All</AppText>
+      <TouchableOpacity activeOpacity={0.75} onPress={onClear}>
+        <AppText style={styles.clearText}>Clear All</AppText>
+      </TouchableOpacity>
     </View>
     <LineBreak height={1.72} />
-    {recentSearches.map(search => (
+    {searches.map(search => (
       <GlassCard
         key={search}
         onPress={() => onSelect(search)}
@@ -269,12 +316,21 @@ const styles = StyleSheet.create({
   scrollContent: { flexGrow: 1 },
   searchHeader: {
     backgroundColor: AppColors.memorialCard,
-    paddingBottom: responsiveHeight(1.72),
+    paddingBottom: responsiveHeight(2),
     paddingHorizontal: responsiveWidth(5.8),
-    paddingTop: responsiveHeight(1.72),
+    paddingTop: responsiveHeight(2.15),
+  },
+  titleRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+  },
+  headerTitle: {
+    color: AppColors.white,
+    fontSize: responsiveFontSize(2.35),
+    fontWeight: '700',
   },
   searchRow: { alignItems: 'center', flexDirection: 'row' },
-  backButton: { height: responsiveWidth(8), justifyContent: 'center', width: responsiveWidth(8) },
+  backButton: { height: responsiveWidth(8), justifyContent: 'center', marginRight: responsiveWidth(2), width: responsiveWidth(8) },
   searchBox: {
     alignItems: 'center',
     borderColor: AppColors.homeBorder,
@@ -282,8 +338,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     flex: 1,
     flexDirection: 'row',
-    height: responsiveHeight(5.15),
-    marginLeft: responsiveWidth(2.9),
+    height: responsiveHeight(5.8),
     paddingHorizontal: responsiveWidth(3.86),
   },
   searchInput: {
@@ -297,10 +352,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: AppColors.white,
     borderRadius: responsiveWidth(5.8),
-    height: responsiveWidth(11.6),
+    height: responsiveHeight(5.8),
     justifyContent: 'center',
     marginLeft: responsiveWidth(2.9),
-    width: responsiveWidth(11.6),
+    width: responsiveHeight(5.8),
   },
   content: { padding: responsiveWidth(5.8) },
   categoryRow: { flexDirection: 'row', flexWrap: 'wrap', gap: responsiveWidth(2.4) },
@@ -348,6 +403,11 @@ const styles = StyleSheet.create({
   vendorBadge: { alignSelf: 'flex-start', backgroundColor: 'rgba(255,255,255,0.14)', borderRadius: 12, marginTop: responsiveHeight(0.42), paddingHorizontal: responsiveWidth(1.93), paddingVertical: responsiveHeight(0.25) },
   vendorBadgeText: { color: AppColors.white, fontSize: responsiveFontSize(1) },
   emptyText: { color: AppColors.homeTextMuted, fontSize: responsiveFontSize(1.35) },
+  loaderWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: responsiveHeight(4),
+  },
 });
 
 export default SearchScreen;

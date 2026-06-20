@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useDispatch } from 'react-redux';
 import { Image, Pressable, StyleSheet, View } from 'react-native';
 import AppButton from '../components/AppButton';
 import AppText from '../components/AppText';
@@ -8,6 +9,11 @@ import ScreenWrapper from '../components/ScreenWrapper';
 import { AppAssets } from '../utils/AppAssets';
 import { AppColors } from '../utils/AppColors';
 import { showToast } from '../utils/Toast';
+import { setProfileCreated } from '../redux/slices/authSlice';
+import {
+  useResendOtpMutation,
+  useVerifyOtpMutation,
+} from '../redux/api/authApi';
 import {
   responsiveFontSize,
   responsiveHeight,
@@ -17,14 +23,18 @@ import {
 const RESEND_SECONDS = 60;
 
 const EmailConfirmationScreen = ({ navigation, route }) => {
+  const dispatch = useDispatch();
   const [otp, setOtp] = useState('');
   const [resendTimer, setResendTimer] = useState(RESEND_SECONDS);
-  const [isLoading, setIsLoading] = useState(false);
+  const [resendOtp] = useResendOtpMutation();
+  const [verifyOtp, { isLoading }] = useVerifyOtpMutation();
 
   const email = route?.params?.email || 'your@email.com';
   const purpose = route?.params?.purpose || 'email-verification';
   const role = route?.params?.role || 'user';
+  const userId = route?.params?.userId;
   const canResend = resendTimer === 0;
+  const isResetPasswordFlow = purpose === 'reset-password';
 
   useEffect(() => {
     if (resendTimer === 0) {
@@ -38,51 +48,107 @@ const EmailConfirmationScreen = ({ navigation, route }) => {
     return () => clearInterval(timerId);
   }, [resendTimer]);
 
-  const navigateMain = routeName => {
+  const navigateMain = () => {
     let rootNavigation = navigation;
 
     while (rootNavigation.getParent?.()) {
       rootNavigation = rootNavigation.getParent();
     }
 
-    rootNavigation.navigate('MainStack', { screen: routeName });
+    rootNavigation.reset({
+      index: 0,
+      routes: [{ name: 'MainStack' }],
+    });
   };
 
-  const handleVerify = () => {
+  const handleVerify = async () => {
     if (otp.length !== 6) {
       showToast('Invalid code', 'Enter a 6-digit code.');
       return;
     }
 
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      if (purpose === 'reset-password') {
-        showToast('Code verified', 'Create your new password.');
-        navigation.navigate('ResetPassword', { email, role });
-        return;
-      }
+    if (!userId) {
+      showToast('Missing user', 'Unable to verify this account.');
+      return;
+    }
 
-      showToast('Email verified', 'Your account verification is ready.');
-      navigateMain(role === 'vendor' ? 'VendorMain' : 'UserMain');
-    }, 700);
+    try {
+      const response = await verifyOtp({ otp, role, userId }).unwrap();
+      showToast(
+        'Email verified',
+        response?.message || 'Your account verification is ready.',
+      );
+      if (role === 'vendor') {
+        dispatch(setProfileCreated(true));
+      }
+      navigateMain();
+    } catch (error) {
+      showToast('Verification failed', error?.message || 'Invalid OTP.');
+    }
   };
 
-  const handleResend = () => {
+  const goToLogin = () => {
+    navigation.navigate(role === 'vendor' ? 'VendorLogin' : 'Login');
+  };
+
+  const handleResend = async () => {
     if (!canResend) {
       return;
     }
 
-    setResendTimer(RESEND_SECONDS);
-    showToast('OTP resent', `A new code has been sent to ${email}.`);
+    if (!userId) {
+      showToast('Missing user', 'Unable to resend OTP.');
+      return;
+    }
+
+    try {
+      const response = await resendOtp(userId).unwrap();
+      setResendTimer(RESEND_SECONDS);
+      showToast('OTP resent', response?.message || `A new code has been sent to ${email}.`);
+    } catch (error) {
+      showToast('Resend failed', error?.message || 'Unable to resend OTP.');
+    }
   };
+
+  if (isResetPasswordFlow) {
+    return (
+      <ScreenWrapper
+        isGradient
+        isKeyboardAvoiding
+        isScroll
+        contentContainerStyle={styles.container}
+      >
+        <Image
+          source={AppAssets.images.authLogo}
+          style={styles.logo}
+          resizeMode="cover"
+        />
+
+        <LineBreak height={3.7} />
+        <AppText variant="largeTitle" style={styles.title}>
+          Reset Link Sent
+        </AppText>
+        <LineBreak height={1.5} />
+        <AppText variant="bodyDim" style={styles.resetSubtitle}>
+          Password reset link sent to your email.
+        </AppText>
+        <LineBreak height={0.5} />
+        <AppText style={styles.email}>{email}</AppText>
+        <LineBreak height={4.9} />
+        <AppButton onPress={goToLogin} style={styles.verifyButton}>
+          Back to Sign In
+        </AppButton>
+      </ScreenWrapper>
+    );
+  }
 
   return (
     <ScreenWrapper
       isGradient
       isKeyboardAvoiding
       isScroll
-      contentContainerStyle={styles.container}>
+      contentContainerStyle={styles.container}
+    >
       <Image
         source={AppAssets.images.authLogo}
         style={styles.logo}
@@ -90,7 +156,9 @@ const EmailConfirmationScreen = ({ navigation, route }) => {
       />
 
       <LineBreak height={3.7} />
-      <AppText variant="largeTitle" style={styles.title}>Verification</AppText>
+      <AppText variant="largeTitle" style={styles.title}>
+        Verification
+      </AppText>
       <LineBreak height={1.5} />
       <AppText variant="bodyDim" style={styles.subtitle}>
         Enter the 6-digit code sent to
@@ -105,7 +173,8 @@ const EmailConfirmationScreen = ({ navigation, route }) => {
       <AppButton
         isLoading={isLoading}
         onPress={handleVerify}
-        style={styles.verifyButton}>
+        style={styles.verifyButton}
+      >
         Verify Email
       </AppButton>
 
@@ -115,7 +184,9 @@ const EmailConfirmationScreen = ({ navigation, route }) => {
           Didn't receive code?{' '}
         </AppText>
         <Pressable disabled={!canResend} onPress={handleResend}>
-          <AppText style={[styles.resendAction, !canResend && styles.resendDisabled]}>
+          <AppText
+            style={[styles.resendAction, !canResend && styles.resendDisabled]}
+          >
             {canResend ? 'Resend' : `Wait ${resendTimer}s`}
           </AppText>
         </Pressable>
@@ -145,6 +216,12 @@ const styles = StyleSheet.create({
   subtitle: {
     color: AppColors.goldDim,
     fontSize: responsiveFontSize(1.52),
+  },
+  resetSubtitle: {
+    color: AppColors.goldDim,
+    fontSize: responsiveFontSize(1.52),
+    lineHeight: responsiveHeight(2.4),
+    textAlign: 'center',
   },
   email: {
     color: AppColors.gold,

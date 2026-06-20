@@ -7,50 +7,64 @@ import AppText from '../../../components/AppText';
 import GlassCard from '../../../components/GlassCard';
 import LineBreak from '../../../components/LineBreak';
 import ScreenWrapper from '../../../components/ScreenWrapper';
+import {
+  useGetClientMemorialsQuery,
+  useSelectMemorialMutation,
+} from '../../../redux/api/userApi';
 import { AppAssets } from '../../../utils/AppAssets';
 import { AppColors } from '../../../utils/AppColors';
+import { showToast } from '../../../utils/Toast';
 import {
   responsiveFontSize,
   responsiveHeight,
   responsiveWidth,
 } from '../../../utils/Responsive_Dimensions';
 
-const memorials = [
-  {
-    id: '1',
-    name: 'Robert James Thompson',
-    relation: 'Father',
-    dates: 'Jan 15, 1945 - Mar 20, 2020',
-    location: 'Forest Lawn Memorial Park\nGarden of Peace, Section A,\nPlot 142',
-    isActive: true,
+const mapMemorial = item => {
+  const birth = item?.date_of_birth?.toString();
+  const death = item?.date_of_passing?.toString();
+  const cemetery = item?.cemetery_name?.toString() ?? '';
+  const address = item?.address?.toString() ?? '';
+
+  return {
+    raw: item,
+    id: item?.id?.toString() ?? '',
+    name: item?.name?.toString() ?? 'Memorial',
+    relation: item?.relationship?.toString() ?? 'Loved One',
+    dates: `${birth ?? '-'} - ${death ?? '-'}`,
+    location: `${cemetery}\n${address}`.trim(),
+    isActive: item?.is_selected === true || item?.selected === true,
     image: AppAssets.images.profilePic,
-  },
-  {
-    id: '2',
-    name: 'Margaret Anne Thompson',
-    relation: 'Mother',
-    dates: 'May 8, 1950 - Nov 12, 2022',
-    location: 'Oakwood Memorial Gardens\nSerenity Gardens, Section C,\nPlot 215',
-    isActive: false,
-    image: AppAssets.images.vendor4,
-  },
-  {
-    id: '3',
-    name: 'Michael David Thompson',
-    relation: 'Brother',
-    dates: 'Aug 22, 1975 - Jun 5, 2023',
-    location: 'Forest Lawn Memorial Park\nGarden of Peace, Section A,\nPlot 143',
-    isActive: false,
-    image: AppAssets.images.vendor5,
-  },
-];
+  };
+};
 
 const HEADER_HEIGHT = responsiveHeight(15.2);
 
 const UserMemorialsScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const { data: memorialsData = [], isLoading, isError, error: memorialsError } = useGetClientMemorialsQuery();
+  const [selectMemorial, { isLoading: isSelecting }] = useSelectMemorialMutation();
+  const memorials = memorialsData.map(mapMemorial);
   const headerTop = insets.top;
   const contentTop = headerTop + HEADER_HEIGHT + responsiveHeight(4.3);
+
+  const handlePrimary = async memorial => {
+    if (memorial.isActive) {
+      navigation.navigate('MemorialProfile', { memorial: memorial.raw || memorial });
+      return;
+    }
+
+    if (isSelecting) {
+      return;
+    }
+
+    try {
+      await selectMemorial(memorial.id).unwrap();
+      showToast('Memorial selected', `${memorial.name} is now active.`);
+    } catch (err) {
+      showToast('Selection failed', err?.message || 'Unable to select memorial.');
+    }
+  };
 
   return (
     <ScreenWrapper safeAreaEdges={[]} style={styles.screen}>
@@ -73,6 +87,9 @@ const UserMemorialsScreen = ({ navigation }) => {
           </AppText>
         </View>
         <LineBreak height={1.72} />
+        {isLoading ? <EmptyState text="Loading memorials..." /> : null}
+        {isError ? <EmptyState text={memorialsError?.message || 'Unable to load memorials.'} /> : null}
+        {!isLoading && !isError && !memorials.length ? <EmptyState text="No memorials found yet. Add your first memorial." /> : null}
         {memorials.map(memorial => (
           <MemorialCard
             key={memorial.id}
@@ -81,9 +98,7 @@ const UserMemorialsScreen = ({ navigation }) => {
               editMode: true,
               memorial,
             })}
-            onPrimary={() => navigation.navigate('MemorialProfile', {
-              memorial,
-            })}
+            onPrimary={() => handlePrimary(memorial)}
           />
         ))}
         <InfoFooter />
@@ -196,8 +211,16 @@ const DetailRow = ({ icon, multiline, text }) => (
   </View>
 );
 
-const InfoFooter = () => (
+const EmptyState = ({ text }) => (
   <View style={styles.horizontalPadding}>
+    <GlassCard contentStyle={styles.emptyCard}>
+      <AppText style={styles.emptyText}>{text}</AppText>
+    </GlassCard>
+  </View>
+);
+
+const InfoFooter = () => (
+  <View style={[styles.horizontalPadding, styles.infoFooterWrap]}>
     <View style={styles.infoFooter}>
       <AppText style={styles.infoTitle}>Managing Multiple Memorials</AppText>
       <LineBreak height={1.72} />
@@ -241,6 +264,16 @@ const styles = StyleSheet.create({
   },
   horizontalPadding: {
     paddingHorizontal: responsiveWidth(5.8),
+  },
+  emptyCard: {
+    alignItems: 'center',
+    backgroundColor: AppColors.memorialCard,
+    borderColor: AppColors.homeBorder,
+  },
+  emptyText: {
+    color: AppColors.homeTextMuted,
+    fontSize: responsiveFontSize(1.35),
+    textAlign: 'center',
   },
   addCard: {
     alignItems: 'center',
@@ -420,6 +453,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 0.5,
     padding: responsiveWidth(4.83),
+  },
+  infoFooterWrap: {
+    marginTop: responsiveHeight(2.2),
   },
   infoTitle: {
     color: AppColors.white,

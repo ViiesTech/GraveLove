@@ -1,5 +1,5 @@
 import React from 'react';
-import { Image, StyleSheet, View } from 'react-native';
+import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 import AppButton from '../../../components/AppButton';
 import AppIcon from '../../../components/AppIcon';
 import AppImageHeader from '../../../components/AppImageHeader';
@@ -42,7 +42,13 @@ const ViewMemorialServiceInfoScreen = ({ navigation }) => (
       <LineBreak height={2.4} />
       <AppText style={styles.sectionTitle}>Service Timeline</AppText>
       <LineBreak height={1.5} />
-      {services.map(service => <ServiceCard key={`${service[0]}-${service[5]}`} data={service} />)}
+      {services.map(service => (
+        <ServiceCard
+          key={`${service[0]}-${service[5]}`}
+          data={service}
+          navigation={navigation}
+        />
+      ))}
       <GlassCard contentStyle={styles.summaryCard}>
         <AppText style={styles.cardTitle}>Service Summary</AppText>
         <LineBreak height={1.5} />
@@ -66,7 +72,7 @@ const StatCard = ({ icon, label, value }) => (
   </GlassCard>
 );
 
-const ServiceCard = ({ data }) => {
+const ServiceCard = ({ data, navigation }) => {
   const [title, vendor, rating, price, status, date, desc, photos] = data;
   const scheduled = status === 'Scheduled';
   return (
@@ -82,8 +88,8 @@ const ServiceCard = ({ data }) => {
           </View>
         </View>
         <View style={styles.priceBlock}>
-          <AppText style={styles.price}>{price}</AppText>
           <View style={[styles.statusPill, scheduled && styles.scheduledPill]}><AppText style={styles.statusText}>{status}</AppText></View>
+          <AppText style={styles.price}>{price}</AppText>
         </View>
       </View>
       <LineBreak height={1.4} />
@@ -93,11 +99,38 @@ const ServiceCard = ({ data }) => {
       {photos.length ? (
         <>
           <LineBreak height={1.4} />
+          <AppText style={styles.photosTitle}>Service Photos</AppText>
+          <LineBreak height={0.8} />
           <View style={styles.photoRow}>
             {photos.map((photo, index) => <Image key={index} source={photo} style={styles.photo} />)}
           </View>
         </>
       ) : null}
+      <LineBreak height={1.6} />
+      <View style={styles.cardButtons}>
+        <TouchableOpacity
+          activeOpacity={0.82}
+          onPress={() => navigation.navigate('BookService')}
+          style={styles.viewButton}
+        >
+          <AppText style={styles.viewButtonText}>{scheduled ? 'Reschedule' : 'View Details'}</AppText>
+        </TouchableOpacity>
+        <TouchableOpacity
+          activeOpacity={0.82}
+          onPress={() => !scheduled && navigation.navigate('BookingServiceStep3', {
+            bookingDraft: {
+              isStaticRebook: true,
+              service: { name: title },
+              vendorName: vendor,
+              cemeteryName: 'Forest Lawn',
+              graveNumber: 'Garden of Peace, Section A, Plot 142',
+            },
+          })}
+          style={styles.bookAgainButton}
+        >
+          <AppText style={styles.bookAgainText}>{scheduled ? 'Delete' : 'Book Again'}</AppText>
+        </TouchableOpacity>
+      </View>
     </GlassCard>
   );
 };
@@ -111,8 +144,17 @@ const SummaryRow = ({ label, value }) => (
 
 const styles = StyleSheet.create({
   scrollContent: { flexGrow: 1 },
-  content: { padding: responsiveWidth(5.8), paddingBottom: responsiveHeight(8) },
-  statRow: { flexDirection: 'row', gap: responsiveWidth(4) },
+  content: {
+    marginTop: -responsiveHeight(4.1),
+    paddingHorizontal: responsiveWidth(5.8),
+    paddingBottom: responsiveHeight(8),
+  },
+  statRow: {
+    flexDirection: 'row',
+    gap: responsiveWidth(4),
+    zIndex: 2,
+    elevation: 2,
+  },
   statCard: { flex: 1, backgroundColor: AppColors.memorialCard, borderColor: AppColors.homeBorder, borderRadius: 12 },
   statTop: { alignItems: 'center', flexDirection: 'row' },
   statIcon: { alignItems: 'center', justifyContent: 'center', width: responsiveWidth(6), height: responsiveWidth(6), borderRadius: responsiveWidth(3), backgroundColor: AppColors.white, marginRight: responsiveWidth(2) },
@@ -128,14 +170,20 @@ const styles = StyleSheet.create({
   vendorLine: { alignItems: 'center', flexDirection: 'row', gap: responsiveWidth(1), marginTop: responsiveHeight(0.4) },
   muted: { color: AppColors.homeTextMuted, fontSize: responsiveFontSize(1.12) },
   priceBlock: { alignItems: 'flex-end' },
-  price: { color: AppColors.white, fontSize: responsiveFontSize(1.32), fontWeight: '700' },
-  statusPill: { marginTop: responsiveHeight(0.6), borderRadius: 12, paddingHorizontal: responsiveWidth(2), paddingVertical: responsiveHeight(0.35), backgroundColor: AppColors.memorialMutedButton },
+  price: { color: AppColors.white, fontSize: responsiveFontSize(1.32), fontWeight: '700', marginTop: responsiveHeight(0.42) },
+  statusPill: { borderRadius: 12, paddingHorizontal: responsiveWidth(2), paddingVertical: responsiveHeight(0.35), backgroundColor: AppColors.memorialMutedButton },
   scheduledPill: { backgroundColor: AppColors.onboardingButton },
   statusText: { color: AppColors.white, fontSize: responsiveFontSize(0.9) },
   iconLine: { alignItems: 'center', flexDirection: 'row', gap: responsiveWidth(2) },
   desc: { color: AppColors.homeTextMuted, fontSize: responsiveFontSize(1.15), lineHeight: responsiveFontSize(1.7) },
   photoRow: { flexDirection: 'row', gap: responsiveWidth(2) },
   photo: { width: responsiveWidth(18), height: responsiveHeight(7), borderRadius: 10 },
+  photosTitle: { color: AppColors.white, fontSize: responsiveFontSize(1.1), fontWeight: '600' },
+  cardButtons: { flexDirection: 'row', gap: responsiveWidth(3) },
+  viewButton: { alignItems: 'center', backgroundColor: AppColors.onboardingButton, borderRadius: 20, flex: 1, justifyContent: 'center', paddingVertical: responsiveHeight(1.32) },
+  viewButtonText: { color: AppColors.white, fontSize: responsiveFontSize(1.12), fontWeight: '700' },
+  bookAgainButton: { alignItems: 'center', backgroundColor: '#4F6D95', borderRadius: 20, flex: 1, justifyContent: 'center', paddingVertical: responsiveHeight(1.32) },
+  bookAgainText: { color: AppColors.white, fontSize: responsiveFontSize(1.12), fontWeight: '700' },
   summaryCard: { backgroundColor: AppColors.memorialCard, borderColor: AppColors.homeBorder, borderRadius: 16 },
   cardTitle: { color: AppColors.white, fontSize: responsiveFontSize(1.35), fontWeight: '700' },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: responsiveHeight(1) },

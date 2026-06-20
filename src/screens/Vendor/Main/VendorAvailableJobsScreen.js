@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import AppIcon from '../../../components/AppIcon';
 import AppText from '../../../components/AppText';
 import GlassCard from '../../../components/GlassCard';
@@ -22,7 +22,9 @@ const VendorAvailableJobsScreen = ({ navigation }) => (
   <ScreenWrapper isScroll contentContainerStyle={styles.content}>
     <View style={styles.header}>
       <View style={styles.headerRow}>
-        <AppIcon name="arrow-back" color={AppColors.white} size={24} style={styles.backIcon} />
+        <TouchableOpacity activeOpacity={0.75} onPress={() => navigation.goBack()} style={styles.backButton}>
+          <AppIcon name="arrow-back" color={AppColors.white} size={24} />
+        </TouchableOpacity>
         <View>
           <AppText style={styles.headerTitle}>Available Jobs</AppText>
           <AppText style={styles.headerSub}>3 jobs near you</AppText>
@@ -67,31 +69,31 @@ const JobCard = ({ job, onPress }) => (
 
 const InfoLine = ({ icon, text }) => (
   <View style={styles.infoLine}>
-    <AppIcon name={icon} color={AppColors.homeTextMuted} size={16} />
+    <AppIcon name={icon} color="#4E6983" size={16} />
     <AppText numberOfLines={1} style={styles.infoText}>{text}</AppText>
   </View>
 );
 
 const styles = StyleSheet.create({
   content: { paddingBottom: responsiveHeight(5) },
-  header: { padding: responsiveWidth(4), backgroundColor: 'rgba(4,47,103,0.5)' },
+  header: { padding: responsiveWidth(4), backgroundColor: 'transparent' },
   headerRow: { alignItems: 'center', flexDirection: 'row' },
-  backIcon: { marginRight: responsiveWidth(3) },
+  backButton: { marginRight: responsiveWidth(3), paddingVertical: responsiveHeight(0.6), paddingRight: responsiveWidth(1.2) },
   headerTitle: { color: AppColors.white, fontSize: responsiveFontSize(1.8), fontWeight: '700' },
   headerSub: { color: AppColors.homeTextMuted, fontSize: responsiveFontSize(1.1), marginTop: responsiveHeight(0.25) },
   body: { padding: responsiveWidth(4) },
-  infoBanner: { padding: responsiveWidth(4), marginBottom: responsiveHeight(1.6), borderRadius: 12, backgroundColor: AppColors.onboardingButton },
+  infoBanner: { padding: responsiveWidth(4), marginBottom: responsiveHeight(1.6), borderRadius: 12, backgroundColor: AppColors.memorialCard },
   infoBannerText: { color: AppColors.white, fontSize: responsiveFontSize(1.25), lineHeight: responsiveHeight(2) },
   jobCard: { marginBottom: responsiveHeight(1.5), backgroundColor: AppColors.memorialCard, borderColor: AppColors.homeBorder },
   jobTop: { alignItems: 'flex-start', flexDirection: 'row', justifyContent: 'space-between' },
-  jobTitle: { flex: 1, color: AppColors.white, fontSize: responsiveFontSize(1.65), fontWeight: '700', paddingRight: responsiveWidth(3) },
-  price: { color: AppColors.onboardingButton, fontSize: responsiveFontSize(1.8), fontWeight: '700' },
-  categoryBadge: { alignSelf: 'flex-start', paddingHorizontal: responsiveWidth(3), paddingVertical: responsiveHeight(0.55), borderRadius: 16, borderWidth: 0.5, borderColor: AppColors.white, backgroundColor: 'rgba(255,255,255,0.12)' },
+  jobTitle: { flex: 1, color: '#4E6983', fontSize: responsiveFontSize(1.65), fontWeight: '700', paddingRight: responsiveWidth(3) },
+  price: { color: AppColors.white, fontSize: responsiveFontSize(1.8), fontWeight: '700' },
+  categoryBadge: { alignSelf: 'flex-start', paddingHorizontal: responsiveWidth(3), paddingVertical: responsiveHeight(0.55), borderRadius: 16, backgroundColor: '#506E95' },
   categoryText: { color: AppColors.white, fontSize: responsiveFontSize(1.05), fontWeight: '700' },
   infoLine: { alignItems: 'center', flexDirection: 'row', marginTop: responsiveHeight(0.65) },
-  infoText: { flex: 1, color: AppColors.homeTextMuted, fontSize: responsiveFontSize(1.18), marginLeft: responsiveWidth(1.2) },
+  infoText: { flex: 1, color: '#4E6983', fontSize: responsiveFontSize(1.18), marginLeft: responsiveWidth(1.2) },
   footerRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  caption: { color: AppColors.homeTextMuted, fontSize: responsiveFontSize(1.05) },
+  caption: { color: AppColors.white, fontSize: responsiveFontSize(1.05) },
 });
 
 export default VendorAvailableJobsScreen;

@@ -28,10 +28,10 @@ const VendorDashboardScreen = ({ navigation }) => {
         <View style={styles.headerShade} />
         <View style={styles.headerActions}>
           <TouchableOpacity activeOpacity={0.82} onPress={() => navigation.navigate('VendorProfile')}>
-            <View style={styles.headerIcon}><AppIcon name="person" color={AppColors.themeColor} size={24} /></View>
+            <View style={styles.headerIcon}><AppIcon name="person" color={AppColors.white} size={24} /></View>
           </TouchableOpacity>
           <TouchableOpacity activeOpacity={0.82} onPress={() => navigation.navigate('VendorNotifications')}>
-            <View style={styles.headerIcon}><AppIcon name="notifications" color={AppColors.themeColor} size={24} /></View>
+            <View style={styles.headerIcon}><AppIcon name="notifications" color={AppColors.white} size={24} /></View>
           </TouchableOpacity>
         </View>
         <View style={styles.headerTitle}>
@@ -72,64 +72,73 @@ const VendorDashboardScreen = ({ navigation }) => {
   );
 };
 
-export const VendorServiceCard = ({ onPress, service }) => (
+export const VendorServiceCard = ({ mutedColor, onPress, service }) => (
   <GlassCard onPress={onPress} contentStyle={styles.serviceCard}>
     <View style={styles.serviceTop}>
       <View style={styles.serviceCopy}>
         <AppText style={styles.serviceTitle}>{service[0]}</AppText>
-        <AppText style={styles.serviceSub}>{service[1]}</AppText>
+        <AppText style={[styles.serviceSub, mutedColor ? { color: mutedColor } : null]}>{service[1]}</AppText>
       </View>
       <StatusPill status={service[4]} />
     </View>
     <LineBreak height={1.4} />
-    <InfoLine label="Service:" value={service[2]} />
-    <InfoLine label="Time:" value={service[3]} />
+    <InfoLine label="Service:" mutedColor={mutedColor} value={service[2]} />
+    <InfoLine label="Time:" mutedColor={mutedColor} value={service[3]} />
+    <LineBreak height={1.6} />
+    <TouchableOpacity activeOpacity={0.82} onPress={onPress} style={styles.detailsButton}>
+      <AppText style={styles.detailsButtonText}>View Details</AppText>
+      <AppIcon name="chevron-right" color={AppColors.white} size={18} />
+    </TouchableOpacity>
   </GlassCard>
 );
 
-const StatusPill = ({ status }) => (
-  <View style={styles.statusPill}>
-    <AppText style={styles.statusText}>{status}</AppText>
-  </View>
-);
+const StatusPill = ({ status }) => {
+  return (
+    <View style={styles.statusPill}>
+      <AppText style={styles.statusText}>{status}</AppText>
+    </View>
+  );
+};
 
-const InfoLine = ({ label, value }) => (
+const InfoLine = ({ label, mutedColor, value }) => (
   <View style={styles.infoLine}>
-    <AppText style={styles.infoLabel}>{label}</AppText>
+    <AppText style={[styles.infoLabel, mutedColor ? { color: mutedColor } : null]}>{label}</AppText>
     <AppText style={styles.infoValue}>{value}</AppText>
   </View>
 );
 
 const styles = StyleSheet.create({
   content: { paddingBottom: responsiveHeight(9) },
-  header: { height: responsiveHeight(22), justifyContent: 'space-between', padding: responsiveWidth(4), overflow: 'hidden' },
+  header: { height: responsiveHeight(22), overflow: 'hidden' },
   headerShade: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(4, 47, 103, 0.48)' },
-  headerActions: { flexDirection: 'row', justifyContent: 'space-between' },
-  headerIcon: { alignItems: 'center', justifyContent: 'center', width: responsiveWidth(10), height: responsiveWidth(10), borderRadius: responsiveWidth(5), backgroundColor: AppColors.white },
-  headerTitle: { paddingBottom: responsiveHeight(0.6) },
+  headerActions: { position: 'absolute', top: responsiveHeight(1.7), left: responsiveWidth(4), right: responsiveWidth(4), flexDirection: 'row', justifyContent: 'space-between' },
+  headerIcon: { alignItems: 'center', justifyContent: 'center', width: responsiveWidth(10), height: responsiveWidth(10), borderRadius: responsiveWidth(5), backgroundColor: AppColors.memorialCard },
+  headerTitle: { position: 'absolute', left: responsiveWidth(4), bottom: responsiveHeight(1.7) },
   title: { color: AppColors.white, fontSize: responsiveFontSize(2.55), fontWeight: '700' },
   subtitle: { color: AppColors.homeTextMuted, fontSize: responsiveFontSize(1.25), marginTop: responsiveHeight(0.4) },
   body: { padding: responsiveWidth(4) },
-  availableJobs: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: responsiveWidth(5), paddingVertical: responsiveHeight(1.7), borderRadius: 12, backgroundColor: AppColors.onboardingButton },
+  availableJobs: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: responsiveWidth(5), paddingVertical: responsiveHeight(1.7), borderRadius: 12, backgroundColor: AppColors.memorialCard },
   availableText: { color: AppColors.white, fontSize: responsiveFontSize(1.65), fontWeight: '700' },
-  newBadge: { paddingHorizontal: responsiveWidth(2.4), paddingVertical: responsiveHeight(0.45), borderRadius: 8, backgroundColor: AppColors.themeColor },
+  newBadge: { paddingHorizontal: responsiveWidth(2.4), paddingVertical: responsiveHeight(0.45), borderRadius: 8, backgroundColor: AppColors.onboardingButton },
   newBadgeText: { color: AppColors.white, fontSize: responsiveFontSize(1.05), fontWeight: '700' },
   filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: responsiveWidth(2) },
-  filterChip: { paddingHorizontal: responsiveWidth(3.8), paddingVertical: responsiveHeight(0.9), borderRadius: 20, borderWidth: 0.5, borderColor: AppColors.homeBorder, backgroundColor: AppColors.memorialCard },
-  filterChipActive: { backgroundColor: AppColors.white, borderColor: AppColors.white },
-  filterText: { color: AppColors.white, fontSize: responsiveFontSize(1.15) },
-  filterTextActive: { color: AppColors.themeColor, fontWeight: '700' },
+  filterChip: { paddingHorizontal: responsiveWidth(3.8), paddingVertical: responsiveHeight(0.9), borderRadius: 20, borderWidth: 1, borderColor: AppColors.homeBorder, backgroundColor: AppColors.memorialCard },
+  filterChipActive: { backgroundColor: AppColors.memorialCard, borderColor: AppColors.onboardingButton },
+  filterText: { color: AppColors.homeTextMuted, fontSize: responsiveFontSize(1.15) },
+  filterTextActive: { color: AppColors.white, fontWeight: '700' },
   sectionTitle: { color: AppColors.white, fontSize: responsiveFontSize(1.8), fontWeight: '700' },
-  serviceCard: { marginBottom: responsiveHeight(1.3), backgroundColor: AppColors.memorialCard, borderColor: AppColors.homeBorder },
+  serviceCard: { marginBottom: responsiveHeight(1.3), padding: responsiveWidth(4), backgroundColor: AppColors.memorialCard, borderColor: AppColors.homeBorder },
   serviceTop: { alignItems: 'flex-start', flexDirection: 'row', justifyContent: 'space-between' },
   serviceCopy: { flex: 1, paddingRight: responsiveWidth(3) },
-  serviceTitle: { color: AppColors.white, fontSize: responsiveFontSize(1.55), fontWeight: '700' },
+  serviceTitle: { color: AppColors.white, fontSize: responsiveFontSize(1.65), fontWeight: '700' },
   serviceSub: { color: AppColors.homeTextMuted, fontSize: responsiveFontSize(1.18), marginTop: responsiveHeight(0.4) },
-  statusPill: { paddingHorizontal: responsiveWidth(2.6), paddingVertical: responsiveHeight(0.55), borderRadius: 8, borderWidth: 0.5, borderColor: AppColors.white, backgroundColor: 'rgba(255,255,255,0.12)' },
+  statusPill: { paddingHorizontal: responsiveWidth(2.6), paddingVertical: responsiveHeight(0.55), borderRadius: 8, backgroundColor: '#506E95' },
   statusText: { color: AppColors.white, fontSize: responsiveFontSize(1.05), fontWeight: '700' },
-  infoLine: { flexDirection: 'row', marginTop: responsiveHeight(0.7) },
+  infoLine: { flexDirection: 'row', marginTop: responsiveHeight(0.8) },
   infoLabel: { color: AppColors.homeTextMuted, fontSize: responsiveFontSize(1.25) },
   infoValue: { color: AppColors.white, fontSize: responsiveFontSize(1.25), marginLeft: responsiveWidth(1.4) },
+  detailsButton: { alignItems: 'center', flexDirection: 'row', justifyContent: 'center', width: '100%', minHeight: responsiveHeight(4.4), borderRadius: 8, borderWidth: 1, borderColor: AppColors.white, backgroundColor: 'transparent' },
+  detailsButtonText: { color: AppColors.white, fontSize: responsiveFontSize(1.25), marginRight: responsiveWidth(1), fontWeight: '500' },
 });
 
 export default VendorDashboardScreen;

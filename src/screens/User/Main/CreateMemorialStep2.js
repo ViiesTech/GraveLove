@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import AppIcon from '../../../components/AppIcon';
 import AppText from '../../../components/AppText';
 import CreateMemorialHeader from '../../../components/CreateMemorialHeader';
 import LineBreak from '../../../components/LineBreak';
 import ScreenWrapper from '../../../components/ScreenWrapper';
+import { showToast } from '../../../utils/Toast';
 import { AppColors } from '../../../utils/AppColors';
 import {
   responsiveFontSize,
@@ -17,57 +18,88 @@ import {
   TextField,
 } from './CreateMemorialStep1';
 
-const CreateMemorialStep2 = ({ navigation }) => (
-  <ScreenWrapper safeAreaEdges={[]} style={styles.screen}>
-    <CreateMemorialHeader onBack={() => navigation.goBack()} step={2} />
-    <ScrollView
-      bounces
-      keyboardShouldPersistTaps="handled"
-      showsVerticalScrollIndicator={false}
-      contentContainerStyle={styles.content}>
-      <AppText style={styles.sectionTitle}>Burial Location</AppText>
-      <LineBreak height={1.72} />
+const CreateMemorialStep2 = ({ navigation, route }) => {
+  const formData = route?.params?.formData || {};
+  const memorialId = route?.params?.memorialId;
+  const [cemeteryName, setCemeteryName] = useState(formData.cemetery_name || '');
+  const [section, setSection] = useState(formData.section || '');
+  const [plotNumber, setPlotNumber] = useState(formData.plot_number || '');
+  const [graveNumber, setGraveNumber] = useState(formData.grave_number || '');
 
-      <FieldLabel label="Cemetery Name *" />
-      <TextField placeholder="e.g., Forest Lawn Memorial Park" />
+  const continueNext = () => {
+    if (!cemeteryName.trim()) {
+      showToast('Missing details', 'Cemetery name is required.');
+      return;
+    }
 
-      <LineBreak height={1.72} />
-      <FieldLabel label="Section" />
-      <TextField placeholder="e.g., Garden of Peace" />
+    navigation.navigate('CreateMemorialStep3', {
+      memorialId,
+      formData: {
+        ...formData,
+        cemetery_name: cemeteryName.trim(),
+        section: section.trim(),
+        plot_number: plotNumber.trim(),
+        grave_number: graveNumber.trim(),
+      },
+    });
+  };
 
-      <LineBreak height={1.72} />
-      <FieldLabel label="Plot Number" />
-      <TextField placeholder="e.g., Plot 142" />
+  return (
+    <ScreenWrapper safeAreaEdges={[]} style={styles.screen}>
+      <CreateMemorialHeader onBack={() => navigation.goBack()} step={2} />
+      <ScrollView
+        bounces
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.content}>
+        <AppText style={styles.sectionTitle}>Burial Location</AppText>
+        <LineBreak height={1.72} />
 
-      <LineBreak height={1.72} />
-      <FieldLabel label="Grave Number" />
-      <TextField placeholder="e.g., #45" />
-
-      <LineBreak height={2.58} />
-      <View style={styles.infoCard}>
-        <AppIcon
-          name="location-on"
-          color={AppColors.white}
-          size={responsiveWidth(4.83)}
+        <FieldLabel label="Cemetery Name *" />
+        <TextField
+          onChangeText={setCemeteryName}
+          placeholder="e.g., Forest Lawn Memorial Park"
+          value={cemeteryName}
         />
-        <View style={styles.infoCopy}>
-          <AppText style={styles.infoTitle}>Location Details</AppText>
-          <LineBreak height={0.42} />
-          <AppText style={styles.infoText}>
-            These details help vendors locate the grave for services
-          </AppText>
-        </View>
-      </View>
 
-      <LineBreak height={4.3} />
-      <BackContinueButtons
-        onBack={() => navigation.goBack()}
-        onContinue={() => navigation.navigate('CreateMemorialStep3')}
-      />
-      <LineBreak height={4.3} />
-    </ScrollView>
-  </ScreenWrapper>
-);
+        <LineBreak height={1.72} />
+        <FieldLabel label="Section" />
+        <TextField onChangeText={setSection} placeholder="e.g., Garden of Peace" value={section} />
+
+        <LineBreak height={1.72} />
+        <FieldLabel label="Plot Number" />
+        <TextField onChangeText={setPlotNumber} placeholder="e.g., Plot 142" value={plotNumber} />
+
+        <LineBreak height={1.72} />
+        <FieldLabel label="Grave Number" />
+        <TextField onChangeText={setGraveNumber} placeholder="e.g., #45" value={graveNumber} />
+
+        <LineBreak height={2.58} />
+        <View style={styles.infoCard}>
+          <AppIcon
+            name="location-on"
+            color={AppColors.white}
+            size={responsiveWidth(4.83)}
+          />
+          <View style={styles.infoCopy}>
+            <AppText style={styles.infoTitle}>Location Details</AppText>
+            <LineBreak height={0.42} />
+            <AppText style={styles.infoText}>
+              These details help vendors locate the grave for services
+            </AppText>
+          </View>
+        </View>
+
+        <LineBreak height={4.3} />
+        <BackContinueButtons
+          onBack={() => navigation.goBack()}
+          onContinue={continueNext}
+        />
+        <LineBreak height={4.3} />
+      </ScrollView>
+    </ScreenWrapper>
+  );
+};
 
 const styles = StyleSheet.create({
   screen: {

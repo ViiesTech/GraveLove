@@ -19,11 +19,27 @@ import {
   responsiveHeight,
   responsiveWidth,
 } from '../../../utils/Responsive_Dimensions';
+import {
+  useCreateClientMemorialPostMutation,
+  useGetClientMemorialsQuery,
+  useSelectMemorialMutation,
+} from '../../../redux/api/userApi';
+import { showToast } from '../../../utils/Toast';
 
 const categories = ['Tribute', 'Visit', 'Celebration', 'Memory', 'Gratitude'];
+const firstValue = (...values) => values.find(value => value !== undefined && value !== null && value !== '') || '';
+const getSelectedMemorial = memorials => memorials?.find(item => item?.is_selected === true || item?.selected === true) || memorials?.[0];
 
 const UserPostMemoryScreen = ({ navigation }) => {
   const [selectedCategory, setSelectedCategory] = useState('Tribute');
+  const [memoryOf, setMemoryOf] = useState('');
+  const [location, setLocation] = useState('');
+  const [memory, setMemory] = useState('');
+  const { data: memorials = [] } = useGetClientMemorialsQuery();
+  const selectedMemorial = getSelectedMemorial(memorials);
+  const memorialId = firstValue(selectedMemorial?.id, selectedMemorial?.memorial_id);
+  const [selectMemorial] = useSelectMemorialMutation();
+  const [createPost, { isLoading: isSubmitting }] = useCreateClientMemorialPostMutation();
   const shareSheetRef = useRef(null);
   const shareSnapPoints = useMemo(() => ['90%'], []);
 
@@ -34,6 +50,37 @@ const UserPostMemoryScreen = ({ navigation }) => {
   const closeShareSheet = useCallback(() => {
     shareSheetRef.current?.dismiss();
   }, []);
+
+  const handleShareMemory = async () => {
+    const body = memory.trim();
+    if (!memorialId) {
+      showToast('Community', 'Please select a memorial first');
+      return;
+    }
+    if (!body) {
+      showToast('Community', 'Please write your memory');
+      return;
+    }
+
+    try {
+      if (selectedMemorial?.is_selected !== true && selectedMemorial?.selected !== true) {
+        await selectMemorial(memorialId).unwrap();
+      }
+      await createPost({
+        memorialId,
+        body: {
+          body,
+          category: selectedCategory,
+          location: location.trim(),
+          title: memoryOf.trim(),
+          visibility: 'family',
+        },
+      }).unwrap();
+      openShareSheet();
+    } catch (error) {
+      showToast('Community', error?.message || 'Unable to post now');
+    }
+  };
 
   return (
     <ScreenWrapper isScroll isKeyboardAvoiding contentContainerStyle={styles.content}>
@@ -67,18 +114,21 @@ const UserPostMemoryScreen = ({ navigation }) => {
           ))}
         </View>
 
-        <Field label="In Memory Of" placeholder="e.g., John Smith - Beloved Father" />
-        <Field label="Cemetery Location (Optional)" placeholder="e.g., Green Meadows Cemetery" icon="location-on" />
+        <Field label="In Memory Of" placeholder="e.g., John Smith - Beloved Father" value={memoryOf} onChangeText={setMemoryOf} />
+        <Field label="Cemetery Location (Optional)" placeholder="e.g., Green Meadows Cemetery" icon="location-on" value={location} onChangeText={setLocation} />
         <AppText style={styles.label}>Your Memory</AppText>
         <LineBreak height={0.85} />
-        <AppTextInput
+        <TextInput
           multiline
+          value={memory}
+          onChangeText={setMemory}
           placeholder="Share your thoughts, memories, or tribute..."
+          placeholderTextColor="rgba(255,255,255,0.42)"
+          selectionColor={AppColors.white}
           style={styles.memoryField}
-          inputStyle={styles.memoryInput}
         />
         <View style={styles.toolsRow}>
-          <AppText style={styles.counter}>0 characters</AppText>
+          <AppText style={styles.counter}>{memory.length} characters</AppText>
           <View style={styles.toolsIcons}>
             <AppIcon name="emoji-emotions" color={AppColors.homeTextMuted} size={20} />
             <AppIcon name="tag" color={AppColors.homeTextMuted} size={20} />
@@ -109,8 +159,9 @@ const UserPostMemoryScreen = ({ navigation }) => {
         <LineBreak height={2.6} />
         <AppButton
           style={styles.postButton}
-          onPress={openShareSheet}>
-          Share Memory
+          disabled={isSubmitting}
+          onPress={handleShareMemory}>
+          {isSubmitting ? 'Sharing...' : 'Share Memory'}
         </AppButton>
       </View>
       <SharePostMemorySheet
@@ -122,20 +173,27 @@ const UserPostMemoryScreen = ({ navigation }) => {
   );
 };
 
-const Field = ({ icon, label, placeholder }) => (
+const Field = ({ icon, label, onChangeText, placeholder, value }) => (
   <View style={styles.field}>
     <View style={styles.labelRow}>
       {icon ? <AppIcon name={icon} color={AppColors.white} size={16} /> : null}
       <AppText style={styles.label}>{label}</AppText>
     </View>
     <LineBreak height={0.85} />
-    <AppTextInput placeholder={placeholder} inputStyle={styles.inputText} />
+    <AppTextInput
+      value={value}
+      onChangeText={onChangeText}
+      placeholder={placeholder}
+      gradientColors={['#749FC6', '#749FC6']}
+      style={styles.input}
+      inputStyle={styles.inputText}
+    />
   </View>
 );
 
 const PhotoButton = ({ icon, title }) => (
   <TouchableOpacity activeOpacity={0.82} style={styles.photoBtn}>
-    <AppIcon name={icon} color={AppColors.white} size={24} />
+    <AppIcon name={icon} color="#91ABC6" size={24} />
     <AppText style={styles.photoText}>{title}</AppText>
   </TouchableOpacity>
 );
@@ -263,21 +321,21 @@ const styles = StyleSheet.create({
   userSub: { color: AppColors.homeTextMuted, fontSize: responsiveFontSize(1.15), marginTop: responsiveHeight(0.3) },
   label: { color: AppColors.white, fontSize: responsiveFontSize(1.35), fontWeight: '600' },
   chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: responsiveWidth(2.4), marginTop: responsiveHeight(1.2), marginBottom: responsiveHeight(2.4) },
-  chip: { paddingHorizontal: responsiveWidth(4), paddingVertical: responsiveHeight(0.9), borderRadius: 18, backgroundColor: AppColors.memorialCard, borderWidth: 0.5, borderColor: AppColors.homeBorder },
+  chip: { paddingHorizontal: responsiveWidth(4.4), paddingVertical: responsiveHeight(1.05), borderRadius: 16, backgroundColor: AppColors.memorialCard, borderWidth: 0.5, borderColor: AppColors.homeBorder },
   chipActive: { backgroundColor: AppColors.onboardingButton, borderColor: AppColors.onboardingButton },
-  chipText: { color: AppColors.homeTextMuted, fontSize: responsiveFontSize(1.2), fontWeight: '700' },
+  chipText: { color: AppColors.homeTextMuted, fontSize: responsiveFontSize(1.32), fontWeight: '700' },
   chipTextActive: { color: AppColors.white },
   field: { marginBottom: responsiveHeight(1.8) },
   labelRow: { alignItems: 'center', flexDirection: 'row', gap: responsiveWidth(1.5) },
-  inputText: { paddingHorizontal: responsiveWidth(4) },
-  memoryField: { height: responsiveHeight(16), alignItems: 'flex-start', borderRadius: 16, paddingTop: responsiveHeight(1.2) },
-  memoryInput: { height: '100%', paddingHorizontal: responsiveWidth(4), textAlignVertical: 'top' },
+  input: { backgroundColor: '#749FC6', borderColor: 'transparent', borderRadius: 12 },
+  inputText: { color: AppColors.white, paddingHorizontal: responsiveWidth(4) },
+  memoryField: { backgroundColor: '#749FC6', borderColor: 'transparent', borderRadius: 12, borderWidth: 0, color: AppColors.white, fontSize: responsiveFontSize(1.45), height: responsiveHeight(16), paddingHorizontal: responsiveWidth(4), paddingTop: responsiveHeight(1.2), textAlignVertical: 'top' },
   toolsRow: { alignItems: 'center', flexDirection: 'row', justifyContent: 'space-between', marginTop: responsiveHeight(0.85) },
   counter: { color: AppColors.homeTextMuted, fontSize: responsiveFontSize(1.1) },
   toolsIcons: { flexDirection: 'row', gap: responsiveWidth(4) },
   photoRow: { flexDirection: 'row', gap: responsiveWidth(3.8) },
-  photoBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: responsiveHeight(8.2), borderRadius: 16, backgroundColor: AppColors.memorialCard, borderWidth: 0.5, borderColor: AppColors.homeBorder },
-  photoText: { color: AppColors.white, fontSize: responsiveFontSize(1.25), marginTop: responsiveHeight(0.6), textAlign: 'center' },
+  photoBtn: { flex: 1, alignItems: 'center', justifyContent: 'center', minHeight: responsiveHeight(8.2), borderRadius: 14, backgroundColor: '#6489B1', borderWidth: 0 },
+  photoText: { color: '#91ABC6', fontSize: responsiveFontSize(1.25), fontWeight: '600', marginTop: responsiveHeight(0.6), textAlign: 'center' },
   guidelinesCard: {
     alignItems: 'flex-start',
     flexDirection: 'row',
@@ -301,13 +359,13 @@ const styles = StyleSheet.create({
   },
   guidelinesTitle: {
     color: AppColors.white,
-    fontSize: responsiveFontSize(1.3),
+    fontSize: responsiveFontSize(1.48),
     fontWeight: '700',
   },
   guidelinesText: {
     color: AppColors.homeTextMuted,
-    fontSize: responsiveFontSize(1.12),
-    lineHeight: responsiveHeight(1.75),
+    fontSize: responsiveFontSize(1.25),
+    lineHeight: responsiveFontSize(1.82),
   },
   postButton: { backgroundColor: AppColors.onboardingButton, borderRadius: responsiveHeight(3) },
   shareSheetBackground: {

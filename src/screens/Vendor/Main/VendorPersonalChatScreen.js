@@ -117,7 +117,7 @@ const styles = StyleSheet.create({
     padding: responsiveWidth(4),
     borderBottomWidth: 0.5,
     borderBottomColor: AppColors.homeBorder,
-    backgroundColor: 'rgba(4,47,103,0.8)',
+    backgroundColor: 'transparent',
   },
   headerCopy: {
     flex: 1,
@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
     marginHorizontal: responsiveWidth(3),
     borderWidth: 0.5,
     borderColor: AppColors.homeBorder,
-    borderRadius: responsiveHeight(2.4),
+    borderRadius: 10,
     backgroundColor: AppColors.memorialCard,
   },
   input: {

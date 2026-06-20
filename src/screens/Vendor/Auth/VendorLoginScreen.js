@@ -6,7 +6,6 @@ import {
   StyleSheet,
   View,
 } from 'react-native';
-import LinearGradient from 'react-native-linear-gradient';
 import AppButton from '../../../components/AppButton';
 import AppText from '../../../components/AppText';
 import AppTextInput from '../../../components/AppTextInput';
@@ -16,6 +15,7 @@ import VendorAuthCard from '../../../components/VendorAuthCard';
 import { AppAssets } from '../../../utils/AppAssets';
 import { AppColors } from '../../../utils/AppColors';
 import { showToast } from '../../../utils/Toast';
+import { useLoginVendorMutation } from '../../../redux/api/authApi';
 import {
   responsiveFontSize,
   responsiveHeight,
@@ -26,19 +26,22 @@ const VendorLoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [loginVendor, { isLoading }] = useLoginVendorMutation();
 
-  const navigateMain = routeName => {
+  const navigateMain = () => {
     let rootNavigation = navigation;
 
     while (rootNavigation.getParent?.()) {
       rootNavigation = rootNavigation.getParent();
     }
 
-    rootNavigation.navigate('MainStack', { screen: routeName });
+    rootNavigation.reset({
+      index: 0,
+      routes: [{ name: 'MainStack' }],
+    });
   };
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!email.includes('@')) {
       showToast('Invalid email', 'Please enter a valid email address.');
       return;
@@ -49,27 +52,29 @@ const VendorLoginScreen = ({ navigation }) => {
       return;
     }
 
-    setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      showToast('Vendor login successful', 'Welcome to dashboard.');
-      navigateMain('VendorMain');
-    }, 700);
+    try {
+      const response = await loginVendor({
+        email: email.trim(),
+        password,
+      }).unwrap();
+
+      showToast(
+        'Vendor login successful',
+        response?.message || 'Welcome to dashboard.',
+      );
+      navigateMain();
+    } catch (error) {
+      showToast('Login failed', error?.message || 'Invalid email or password.');
+    }
   };
 
   return (
     <ScreenWrapper isGradient style={styles.screen}>
       <ImageBackground
-        source={AppAssets.images.vendorHeader}
+        source={AppAssets.images.memorialImage2}
         resizeMode="cover"
         imageStyle={styles.headerImage}
         style={styles.header}>
-        <View style={styles.headerTint} />
-        <LinearGradient
-          colors={['rgba(61, 139, 198, 0.18)', AppColors.bgDark]}
-          style={StyleSheet.absoluteFillObject}
-        />
-
         <View style={styles.headerCenter}>
           <Image
             source={AppAssets.images.authLogo}
@@ -177,11 +182,7 @@ const styles = StyleSheet.create({
     backgroundColor: AppColors.bgDark,
   },
   headerImage: {
-    opacity: 0.35,
-  },
-  headerTint: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(5, 31, 75, 0.52)',
+    opacity: 1,
   },
   headerCenter: {
     flex: 1,
