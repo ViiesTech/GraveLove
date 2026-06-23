@@ -173,7 +173,7 @@ const VendorSignupScreen = ({ navigation }) => {
           <AppTextInput
             value={phone}
             onChangeText={setPhone}
-            placeholder="+92 300 1234567"
+            placeholder="+1 (212) 555-0123"
             keyboardType="phone-pad"
             iconSet="ion"
             iconName="phone-portrait-outline"

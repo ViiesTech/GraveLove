@@ -1,4 +1,4 @@
-package com.gravelove
+package com.gravelove.development
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate

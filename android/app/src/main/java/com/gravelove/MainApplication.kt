@@ -1,4 +1,4 @@
-package com.gravelove
+package com.gravelove.development
 
 import android.app.Application
 import com.facebook.react.PackageList
